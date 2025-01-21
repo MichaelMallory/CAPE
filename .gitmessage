@@ -1,0 +1,47 @@
+# <type>(<scope>): <subject>
+# Example: feat(heroes): add flight capability tracking
+#
+# Types:
+#   feat     - New feature for end users
+#   fix      - Bug fix for end users
+#   docs     - Documentation changes
+#   style    - Code style changes (formatting, etc)
+#   refactor - Code changes that neither fix bugs nor add features
+#   perf     - Performance improvements
+#   test     - Adding or updating tests
+#   build    - Changes to build system or dependencies
+#   ci       - Changes to CI configuration
+#   chore    - Other changes that don't modify src or test files
+#   revert   - Reverts a previous commit
+#
+# Scopes:
+#   heroes    - Hero-related changes
+#   missions  - Mission management
+#   equipment - Equipment and inventory
+#   tickets   - Ticket system
+#   auth      - Authentication and authorization
+#   ui        - UI components and styling
+#   api       - API and backend services
+#   db        - Database changes
+#   tests     - Testing infrastructure
+#   docs      - Documentation
+#   ci        - CI/CD pipeline
+#   deps      - Dependencies
+#   config    - Configuration changes
+#
+# Subject should:
+#   - Start with a verb in imperative mood (add, fix, update)
+#   - Not end with a period
+#   - Not exceed 72 characters
+#
+# Body (optional):
+# Provide detailed description of the change.
+# Wrap at 72 characters.
+# Use bullet points if needed:
+# * Point 1
+# * Point 2
+#
+# Footer (optional):
+# Include any breaking changes or GitHub issue references:
+# BREAKING CHANGE: description
+# Fixes #123 

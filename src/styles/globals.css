@@ -1,0 +1,154 @@
+:root {
+  /* Color scheme inspired by superhero themes */
+  --primary: #1a237e;  /* Deep blue for authority */
+  --secondary: #c62828;  /* Red for urgency */
+  --accent: #ffd700;  /* Gold for heroic elements */
+  --background: #f5f5f5;
+  --foreground: #1a1a1a;
+  
+  /* Status colors */
+  --status-active: #4caf50;
+  --status-inactive: #9e9e9e;
+  --status-mia: #ff9800;
+  
+  /* Priority levels */
+  --priority-omega: #d32f2f;
+  --priority-alpha: #f57c00;
+  --priority-beta: #fdd835;
+  --priority-gamma: #7cb342;
+  
+  /* Typography */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-comic: 'Bangers', var(--font-sans);
+  --font-comic-secondary: 'Comic Neue', var(--font-sans);
+  
+  /* Comic-specific variables */
+  --panel-border-width: 2px;
+  --panel-border-color: #000000;
+  --panel-background: #ffffff;
+  --panel-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  
+  /* Speech bubbles */
+  --bubble-background: #ffffff;
+  --bubble-border: #000000;
+  --bubble-shadow: 0 2px 4px rgb(0 0 0 / 0.1);
+  
+  /* Effects */
+  --effect-starburst: #ffe100;
+  --effect-pow: #ff4d4d;
+  --effect-zap: #00ff00;
+  
+  /* Transitions */
+  --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --transition-heroic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ffffff;
+  }
+}
+
+/* Comic Panel Utilities */
+.comic-panel {
+  border: var(--panel-border-width) solid var(--panel-border-color);
+  background: var(--panel-background);
+  box-shadow: var(--panel-shadow);
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.comic-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Speech Bubbles */
+.speech-bubble {
+  background: var(--bubble-background);
+  border: 2px solid var(--bubble-border);
+  border-radius: 1rem;
+  padding: 1rem;
+  position: relative;
+  box-shadow: var(--bubble-shadow);
+}
+
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 20px;
+  border-width: 10px 10px 0;
+  border-style: solid;
+  border-color: var(--bubble-border) transparent;
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 21px;
+  border-width: 9px 9px 0;
+  border-style: solid;
+  border-color: var(--bubble-background) transparent;
+}
+
+/* Comic Typography */
+.comic-title {
+  font-family: var(--font-comic);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+}
+
+.comic-text {
+  font-family: var(--font-comic-secondary);
+  font-weight: 700;
+}
+
+/* Effect Utilities */
+.effect-starburst {
+  color: var(--effect-starburst);
+  text-shadow: 0 0 10px var(--effect-starburst);
+}
+
+.effect-pow {
+  color: var(--effect-pow);
+  text-shadow: 0 0 10px var(--effect-pow);
+}
+
+.effect-zap {
+  color: var(--effect-zap);
+  text-shadow: 0 0 10px var(--effect-zap);
+} 
