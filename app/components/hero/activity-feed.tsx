@@ -1,8 +1,11 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+"use client"
+
+import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { ComicPanel } from '../../../src/components/ui/comic-panel';
 import { Shield, Users, Activity, Star, Wrench, AlertTriangle } from 'lucide-react';
-import { Badge } from '../../../src/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface TimelineEntry {
   id: string;
@@ -11,19 +14,6 @@ interface TimelineEntry {
   details: string;
   created_at: string;
   metadata: Record<string, unknown>;
-}
-
-async function getHeroTimeline(heroId: string): Promise<TimelineEntry[]> {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: activities, error } = await supabase
-    .from('hero_timeline')
-    .select('*')
-    .eq('hero_id', heroId)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  if (error) throw error;
-  return activities || [];
 }
 
 function getActivityIcon(action: string) {
@@ -62,8 +52,86 @@ function getActionBadge(action: string) {
   );
 }
 
-export async function ActivityFeed({ heroId }: { heroId: string }) {
-  const activities = await getHeroTimeline(heroId);
+export function ActivityFeed() {
+  const [activities, setActivities] = useState<TimelineEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    async function fetchActivities() {
+      try {
+        // Get current user
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Get user's profile to get hero_id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profile) return;
+
+        // Get activities
+        const { data: activities } = await supabase
+          .from('hero_timeline')
+          .select('*')
+          .eq('hero_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (activities) {
+          setActivities(activities);
+        }
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchActivities();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('hero-timeline')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'hero_timeline',
+        },
+        (payload: RealtimePostgresChangesPayload<TimelineEntry>) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            setActivities((current) => {
+              const updated = [...current];
+              const index = updated.findIndex((a) => a.id === payload.new.id);
+              if (index >= 0) {
+                updated[index] = payload.new;
+              } else {
+                updated.unshift(payload.new);
+              }
+              return updated.slice(0, 10); // Keep only last 10
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [supabase]);
+
+  if (loading) {
+    return (
+      <ComicPanel variant="secondary" className="p-4 text-center text-muted-foreground">
+        Loading activities...
+      </ComicPanel>
+    );
+  }
 
   if (activities.length === 0) {
     return (

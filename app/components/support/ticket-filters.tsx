@@ -44,30 +44,34 @@ export function TicketFilters({
 }: TicketFiltersProps) {
   const [localFilters, setLocalFilters] = useState<TicketFilters>(filters);
 
-  const handlePriorityToggle = (priority: Priority) => {
-    setLocalFilters(prev => ({
-      ...prev,
-      priorities: prev.priorities.includes(priority)
-        ? prev.priorities.filter(p => p !== priority)
-        : [...prev.priorities, priority]
-    }));
+  const handlePriorityChange = (priority: Priority) => {
+    const newPriorities = localFilters.priorities.includes(priority)
+      ? localFilters.priorities.filter((p) => p !== priority)
+      : [...localFilters.priorities, priority];
+    setLocalFilters({ ...localFilters, priorities: newPriorities });
   };
 
-  const handleStatusToggle = (status: Status) => {
-    setLocalFilters(prev => ({
-      ...prev,
-      statuses: prev.statuses.includes(status)
-        ? prev.statuses.filter(s => s !== status)
-        : [...prev.statuses, status]
-    }));
+  const handleStatusChange = (status: Status) => {
+    const newStatuses = localFilters.statuses.includes(status)
+      ? localFilters.statuses.filter((s) => s !== status)
+      : [...localFilters.statuses, status];
+    setLocalFilters({ ...localFilters, statuses: newStatuses });
   };
 
-  const handleAssignmentToggle = (type: 'assigned' | 'unassigned') => {
-    setLocalFilters(prev => ({
-      ...prev,
-      assignedOnly: type === 'assigned' ? !prev.assignedOnly : false,
-      unassignedOnly: type === 'unassigned' ? !prev.unassignedOnly : false
-    }));
+  const handleAssignedChange = (checked: boolean) => {
+    setLocalFilters({
+      ...localFilters,
+      assignedOnly: checked,
+      unassignedOnly: false,
+    });
+  };
+
+  const handleUnassignedChange = (checked: boolean) => {
+    setLocalFilters({
+      ...localFilters,
+      unassignedOnly: checked,
+      assignedOnly: false,
+    });
   };
 
   const handleApply = () => {
@@ -102,7 +106,7 @@ export function TicketFilters({
                   <Checkbox
                     id={`priority-${priority}`}
                     checked={localFilters.priorities.includes(priority)}
-                    onCheckedChange={() => handlePriorityToggle(priority)}
+                    onCheckedChange={() => handlePriorityChange(priority)}
                   />
                   <Label htmlFor={`priority-${priority}`} className="flex items-center">
                     <Badge className={cn('font-bold ml-2', PRIORITY_COLORS[priority])}>
@@ -122,7 +126,7 @@ export function TicketFilters({
                   <Checkbox
                     id={`status-${status}`}
                     checked={localFilters.statuses.includes(status)}
-                    onCheckedChange={() => handleStatusToggle(status)}
+                    onCheckedChange={() => handleStatusChange(status)}
                   />
                   <Label htmlFor={`status-${status}`}>
                     {status.replace('_', ' ')}
@@ -139,7 +143,7 @@ export function TicketFilters({
                 <Checkbox
                   id="assigned-only"
                   checked={localFilters.assignedOnly}
-                  onCheckedChange={() => handleAssignmentToggle('assigned')}
+                  onCheckedChange={handleAssignedChange}
                 />
                 <Label htmlFor="assigned-only">Show assigned tickets only</Label>
               </div>
@@ -147,7 +151,7 @@ export function TicketFilters({
                 <Checkbox
                   id="unassigned-only"
                   checked={localFilters.unassignedOnly}
-                  onCheckedChange={() => handleAssignmentToggle('unassigned')}
+                  onCheckedChange={handleUnassignedChange}
                 />
                 <Label htmlFor="unassigned-only">Show unassigned tickets only</Label>
               </div>

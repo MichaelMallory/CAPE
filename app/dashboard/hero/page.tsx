@@ -28,6 +28,14 @@ const defaultPanels: PanelConfig[] = [
   { id: 'activity-feed', title: 'Activity Feed', visible: true, order: 4 }
 ];
 
+const COMPONENTS = {
+  'mission-status': MissionStatusCards,
+  'equipment-status': EquipmentStatus,
+  'alert-center': AlertCenter,
+  'quick-actions': QuickActions,
+  'activity-feed': ActivityFeed
+} as const;
+
 export default function HeroDashboard() {
   const [panels, setPanels] = useLocalStorage<PanelConfig[]>('hero-dashboard-panels', defaultPanels);
   const [isCustomizing, setIsCustomizing] = useState(false);
@@ -74,28 +82,6 @@ export default function HeroDashboard() {
   // Reset to default layout
   const resetLayout = () => {
     setPanels(defaultPanels);
-  };
-
-  // Render panel content
-  const renderPanelContent = (panelId: string) => {
-    switch (panelId) {
-      case 'mission-status':
-        return <MissionStatusCards />;
-      case 'equipment-status':
-        return <EquipmentStatus />;
-      case 'alert-center':
-        return <AlertCenter />;
-      case 'quick-actions':
-        return <QuickActions />;
-      case 'activity-feed':
-        return <ActivityFeed />;
-      default:
-        return (
-          <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-            {panelId} Content
-          </div>
-        );
-    }
   };
 
   return (
@@ -155,38 +141,43 @@ export default function HeroDashboard() {
               {panels
                 .filter(panel => panel.visible)
                 .sort((a, b) => a.order - b.order)
-                .map((panel, index) => (
-                  <Draggable 
-                    key={panel.id} 
-                    draggableId={panel.id} 
-                    index={index}
-                  >
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={cn(
-                          "bg-card p-6 rounded-lg shadow-lg",
-                          "border-2 border-primary/20",
-                          "hover:border-primary/40 transition-colors",
-                          panel.id === 'mission-status' && "col-span-2 row-span-2"
-                        )}
-                      >
-                        <div 
-                          role="region" 
-                          aria-label={panel.title}
-                          className="h-full"
+                .map((panel, index) => {
+                  const Component = COMPONENTS[panel.id as keyof typeof COMPONENTS];
+                  if (!Component) return null;
+
+                  return (
+                    <Draggable 
+                      key={panel.id} 
+                      draggableId={panel.id} 
+                      index={index}
+                    >
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className={cn(
+                            "bg-card p-6 rounded-lg shadow-lg",
+                            "border-2 border-primary/20",
+                            "hover:border-primary/40 transition-colors",
+                            panel.id === 'mission-status' && "col-span-2 row-span-2"
+                          )}
                         >
-                          <h2 className="text-xl font-bold mb-4 text-primary">
-                            {panel.title}
-                          </h2>
-                          {renderPanelContent(panel.id)}
+                          <div 
+                            role="region" 
+                            aria-label={panel.title}
+                            className="h-full"
+                          >
+                            <h2 className="text-xl font-bold mb-4 text-primary">
+                              {panel.title}
+                            </h2>
+                            <Component />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
+                      )}
+                    </Draggable>
+                  );
+                })}
               {provided.placeholder}
             </div>
           )}

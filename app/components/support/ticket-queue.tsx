@@ -22,9 +22,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, Filter, MoreVertical } from 'lucide-react';
+import { ArrowUpDown, Filter, MoreVertical, AlertTriangle, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TicketFilters } from './ticket-filters';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Priority = 'OMEGA' | 'ALPHA' | 'BETA' | 'GAMMA';
 type Status = 'NEW' | 'IN_PROGRESS' | 'PENDING' | 'RESOLVED';
@@ -37,6 +38,7 @@ interface Ticket {
   hero?: string;
   created_at: string;
   location?: string;
+  timeAgo: string;
 }
 
 const MOCK_TICKETS: Ticket[] = [
@@ -46,7 +48,8 @@ const MOCK_TICKETS: Ticket[] = [
     priority: 'OMEGA',
     status: 'NEW',
     created_at: '2024-01-21T10:00:00Z',
-    location: 'Downtown Metro City'
+    location: 'Downtown Metro City',
+    timeAgo: '5m'
   },
   {
     id: 'T-002',
@@ -55,7 +58,18 @@ const MOCK_TICKETS: Ticket[] = [
     status: 'IN_PROGRESS',
     hero: 'Captain Thunder',
     created_at: '2024-01-21T09:30:00Z',
-    location: 'Maximum Security Prison'
+    location: 'Maximum Security Prison',
+    timeAgo: '15m'
+  },
+  {
+    id: 'T-003',
+    title: 'Backup Required',
+    priority: 'OMEGA',
+    status: 'IN_PROGRESS',
+    hero: 'Frost Queen',
+    created_at: '2024-01-21T09:30:00Z',
+    location: 'Maximum Security Prison',
+    timeAgo: '2m'
   },
   // Add more mock tickets as needed
 ];
@@ -158,128 +172,58 @@ export function TicketQueue() {
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          {selectedTickets.size > 0 && (
-            <>
-              <Button variant="outline" size="sm">
-                Assign Selected
-              </Button>
-              <Button variant="outline" size="sm">
-                Update Status
-              </Button>
-              <Button variant="outline" size="sm">
-                Update Priority
-              </Button>
-            </>
-          )}
+        <div className="space-x-2">
+          <Badge variant="outline">Active: {tickets.filter(t => t.status === 'IN_PROGRESS').length}</Badge>
+          <Badge variant="outline">Pending: {tickets.filter(t => t.status === 'NEW').length}</Badge>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(true)}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-            {(filters.priorities.length > 0 || 
-              filters.statuses.length > 0 || 
-              filters.assignedOnly || 
-              filters.unassignedOnly) && (
-              <Badge variant="secondary" className="ml-2">
-                {filters.priorities.length + 
-                  filters.statuses.length + 
-                  (filters.assignedOnly ? 1 : 0) + 
-                  (filters.unassignedOnly ? 1 : 0)}
-              </Badge>
-            )}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                Sort
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleSort('priority')}>
-                Priority
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSort('created_at')}>
-                Date
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSort('status')}>
-                Status
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <Button variant="outline" size="sm">
+          New Ticket
+        </Button>
       </div>
 
-      <div className="flex-grow overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedTickets.size === tickets.length}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all tickets"
-                />
-              </TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Hero</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead className="w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedTickets.map((ticket) => (
-              <TableRow
-                key={ticket.id}
-                className="cursor-pointer hover:bg-gray-700/50"
-                onClick={() => setSelectedTicket(ticket)}
-              >
-                <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selectedTickets.has(ticket.id)}
-                    onCheckedChange={(checked) => handleSelectTicket(ticket.id, !!checked)}
-                    aria-label={`Select ticket ${ticket.id}`}
-                  />
-                </TableCell>
-                <TableCell>{ticket.id}</TableCell>
-                <TableCell>{ticket.title}</TableCell>
-                <TableCell>
-                  <Badge
-                    role="status"
-                    aria-label={`${ticket.priority} Priority`}
-                    className={cn(
-                      'font-bold',
-                      PRIORITY_COLORS[ticket.priority]
-                    )}
-                  >
-                    {ticket.priority}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {ticket.status.replace('_', ' ')}
-                  </Badge>
-                </TableCell>
-                <TableCell>{ticket.hero || '-'}</TableCell>
-                <TableCell>{ticket.location || '-'}</TableCell>
-                <TableCell className="w-12">
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <ScrollArea className="flex-1">
+        <div className="space-y-2">
+          {sortedTickets.map((ticket) => (
+            <div
+              key={ticket.id}
+              className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-medium text-sm">{ticket.title}</h3>
+                <Badge
+                  variant={
+                    ticket.priority === 'OMEGA'
+                      ? 'destructive'
+                      : ticket.priority === 'ALPHA'
+                      ? 'default'
+                      : 'secondary'
+                  }
+                >
+                  {ticket.priority}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-gray-400">
+                <div className="flex items-center space-x-2">
+                  <User className="h-3 w-3" />
+                  <span>{ticket.hero || 'Unassigned'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-3 w-3" />
+                  <span>{ticket.timeAgo} ago</span>
+                </div>
+              </div>
+
+              {ticket.priority === 'OMEGA' && (
+                <div className="mt-2 flex items-center text-xs text-red-400">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Immediate attention required
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
 
       <Sheet open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
         <SheetContent>

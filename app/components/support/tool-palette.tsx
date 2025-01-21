@@ -1,16 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { 
-  Layout, 
-  Save, 
-  RotateCcw, 
-  Maximize2, 
-  Minimize2,
-  Grid,
-  Eye,
-  EyeOff
-} from 'lucide-react';
-import { useState } from 'react';
+import { Save, RotateCcw, Grid, Eye, EyeOff } from 'lucide-react';
 
 interface ToolPaletteProps {
   onSaveLayout: () => void;
@@ -20,6 +9,14 @@ interface ToolPaletteProps {
   hiddenPanels: string[];
 }
 
+const PANEL_IDS = [
+  'ticket-queue',
+  'active-missions',
+  'resource-status',
+  'priority-alerts',
+  'team-chat'
+];
+
 export function ToolPalette({
   onSaveLayout,
   onResetLayout,
@@ -27,126 +24,60 @@ export function ToolPalette({
   onTogglePanel,
   hiddenPanels
 }: ToolPaletteProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   return (
-    <Card className="fixed bottom-6 right-6 bg-gray-800/90 backdrop-blur-sm border-blue-500/20 text-white p-2">
-      <div className="flex flex-col gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="hover:bg-blue-500/20"
-        >
-          <Layout className="h-4 w-4" />
-        </Button>
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800/90 backdrop-blur-sm rounded-full px-6 py-3 shadow-lg border border-gray-700 flex items-center space-x-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onSaveLayout}
+        className="text-gray-300 hover:text-white"
+      >
+        <Save className="h-4 w-4 mr-2" />
+        Save Layout
+      </Button>
 
-        {isExpanded && (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onSaveLayout}
-              className="hover:bg-blue-500/20"
-              title="Save Layout"
-            >
-              <Save className="h-4 w-4" />
-            </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onResetLayout}
+        className="text-gray-300 hover:text-white"
+      >
+        <RotateCcw className="h-4 w-4 mr-2" />
+        Reset
+      </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onResetLayout}
-              className="hover:bg-blue-500/20"
-              title="Reset Layout"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onToggleGridlines}
+        className="text-gray-300 hover:text-white"
+      >
+        <Grid className="h-4 w-4 mr-2" />
+        Toggle Grid
+      </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleGridlines}
-              className="hover:bg-blue-500/20"
-              title="Toggle Gridlines"
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
+      <div className="h-6 w-px bg-gray-700" />
 
-            <div className="h-px bg-blue-500/20 my-2" />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onTogglePanel('ticket-queue')}
-              className="hover:bg-blue-500/20"
-              title="Toggle Ticket Queue"
-            >
-              {hiddenPanels.includes('ticket-queue') ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onTogglePanel('active-missions')}
-              className="hover:bg-blue-500/20"
-              title="Toggle Active Missions"
-            >
-              {hiddenPanels.includes('active-missions') ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onTogglePanel('resource-status')}
-              className="hover:bg-blue-500/20"
-              title="Toggle Resource Status"
-            >
-              {hiddenPanels.includes('resource-status') ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onTogglePanel('priority-alerts')}
-              className="hover:bg-blue-500/20"
-              title="Toggle Priority Alerts"
-            >
-              {hiddenPanels.includes('priority-alerts') ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onTogglePanel('team-chat')}
-              className="hover:bg-blue-500/20"
-              title="Toggle Team Chat"
-            >
-              {hiddenPanels.includes('team-chat') ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-          </>
-        )}
+      <div className="flex items-center space-x-2">
+        {PANEL_IDS.map((id) => (
+          <Button
+            key={id}
+            variant="ghost"
+            size="sm"
+            onClick={() => onTogglePanel(id)}
+            className="text-gray-300 hover:text-white"
+          >
+            {hiddenPanels.includes(id) ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            <span className="ml-2">
+              {id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+            </span>
+          </Button>
+        ))}
       </div>
-    </Card>
+    </div>
   );
 } 
