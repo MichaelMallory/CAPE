@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { ComicPanel } from '../../../src/components/ui/comic-panel';
+import { ComicPanel } from '@/components/ui/comic-panel';
 import { Shield, Users, Activity, Star, Wrench, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';

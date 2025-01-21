@@ -1,21 +1,9 @@
-// Move debug info to a separate client component
-'use client'
-function DebugInfo({ profile }: { profile: any }) {
-  return (
-    <div className="fixed bottom-4 right-4 p-4 bg-black/80 text-white rounded-lg max-w-lg overflow-auto">
-      <h3 className="font-bold mb-2">Debug Info</h3>
-      <pre className="text-sm">
-        {JSON.stringify(profile, null, 2)}
-      </pre>
-    </div>
-  )
-}
-
-// Server component starts here - remove 'use client'
+// Remove client directive from this file since it's a server component
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { Database } from "@/lib/database.types"
+import { DebugInfo } from "./debug-info"
 
 export default async function DashboardPage() {
   const supabase = createServerComponentClient<Database>({ cookies })

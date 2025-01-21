@@ -1,52 +1,45 @@
-"use client"
+import { motion, useAnimationControls } from 'framer-motion';
+import { createHeroEntrance, powerSurge } from '@/lib/animations/utils';
+import { POWER_PULSE } from '@/lib/animations/constants';
+import { useRef } from 'react';
+import { type ReactNode } from 'react';
 
-import * as React from "react"
-import { motion, HTMLMotionProps } from "framer-motion"
-import { cn } from "@/lib/utils"
-
-interface AnimatedPanelProps extends Omit<HTMLMotionProps<"div">, "initial" | "animate" | "transition"> {
-  direction?: "left" | "right" | "top" | "bottom"
-  className?: string
-  children: React.ReactNode
+interface AnimatedPanelProps {
+  children: ReactNode;
+  direction?: 'top' | 'bottom' | 'left' | 'right';
+  className?: string;
+  isPowered?: boolean;
+  onClick?: () => void;
 }
 
-export function AnimatedPanel({
-  direction = "right",
-  className,
+export const AnimatedPanel = ({
   children,
-  ...props
-}: AnimatedPanelProps) {
-  const getAnimationProps = () => {
-    const base = {
-      initial: { opacity: 0 },
-      animate: { opacity: 1 },
-      transition: { duration: 0.3, ease: "easeOut" },
-    }
+  direction = 'left',
+  className = '',
+  isPowered = false,
+  onClick,
+}: AnimatedPanelProps) => {
+  const controls = useAnimationControls();
 
-    const directionProps = {
-      left: { x: -20 },
-      right: { x: 20 },
-      top: { y: -20 },
-      bottom: { y: 20 },
+  const handleClick = async () => {
+    if (isPowered) {
+      await controls.start(powerSurge.animate);
     }
-
-    return {
-      ...base,
-      initial: { ...base.initial, ...directionProps[direction] },
-      animate: { ...base.animate, [direction === "left" || direction === "right" ? "x" : "y"]: 0 },
-    }
-  }
+    onClick?.();
+  };
 
   return (
     <motion.div
-      className={cn(
-        "bg-card p-6 rounded-lg shadow-lg border-2 border-primary/20",
-        className
-      )}
-      {...getAnimationProps()}
-      {...props}
+      animate={controls}
+      className={`rounded-lg bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-4 ${className}`}
+      variants={createHeroEntrance(direction)}
+      initial="hidden"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      {...(isPowered && { variants: POWER_PULSE, animate: "pulse" })}
+      onClick={handleClick}
     >
       {children}
     </motion.div>
-  )
-} 
+  );
+}; 

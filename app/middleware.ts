@@ -14,5 +14,7 @@ export const config = {
     '/(auth)/:path*',
     '/login',
     '/register'
+    // Temporarily commenting out admin routes
+    // '/admin/:path*'
   ],
 } 

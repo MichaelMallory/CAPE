@@ -51,7 +51,7 @@ export const columns: ColumnDef<User>[] = [
         <Badge
           variant={
             status === "ACTIVE"
-              ? "success"
+              ? "default"
               : status === "INACTIVE"
               ? "secondary"
               : "destructive"

@@ -1,8 +1,8 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { ComicPanel } from '../../../src/components/ui/comic-panel';
+import { ComicPanel } from '@/components/ui/comic-panel';
 import { Shield, Users, Activity, Star, Wrench, AlertTriangle } from 'lucide-react';
-import { Badge } from '../../../src/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 
 interface TimelineEntry {
   id: string;

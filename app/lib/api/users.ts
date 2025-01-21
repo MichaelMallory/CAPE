@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "../../lib/supabase/server"
 import { cookies } from "next/headers"
-import { User } from "@/app/(admin)/users/columns"
+import { User } from "../../(admin)/users/columns"
 
 interface DatabaseUser {
   id: string

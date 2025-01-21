@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { useToast } from '@/components/ui/use-toast';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { useToast } from '@/hooks/use-toast';
 
 interface PanelPosition {
   x: number;
@@ -17,6 +17,11 @@ interface Panel {
 interface WorkspaceLayout {
   panels: Panel[];
   version: number;
+}
+
+interface WorkspaceLayoutRecord {
+  user_id: string;
+  layout: WorkspaceLayout;
 }
 
 interface UseWorkspaceStateReturn {
@@ -53,10 +58,16 @@ export function useWorkspaceState(): UseWorkspaceStateReturn {
 
     async function loadLayout() {
       try {
+        const { data: userData } = await supabase.auth.getUser();
+
+        if (!userData?.user) {
+          throw new Error('User not found');
+        }
+
         const { data, error } = await supabase
           .from('workspace_layouts')
           .select('layout')
-          .eq('user_id', user.id)
+          .eq('user_id', userData.user.id)
           .single();
 
         if (error) throw error;
@@ -67,7 +78,7 @@ export function useWorkspaceState(): UseWorkspaceStateReturn {
           // Create default layout if none exists
           const { error: insertError } = await supabase
             .from('workspace_layouts')
-            .insert({ user_id: user.id, layout: defaultLayout });
+            .insert({ user_id: userData.user.id, layout: defaultLayout });
 
           if (insertError) throw insertError;
           setLayout(defaultLayout);
@@ -90,7 +101,7 @@ export function useWorkspaceState(): UseWorkspaceStateReturn {
 
     const channel = supabase
       .channel(`workspace:${user.id}`)
-      .on(
+      .on<WorkspaceLayoutRecord>(
         'postgres_changes',
         {
           event: '*',
@@ -98,9 +109,10 @@ export function useWorkspaceState(): UseWorkspaceStateReturn {
           table: 'workspace_layouts',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
-          if (payload.new && payload.new.layout) {
-            setLayout(payload.new.layout as WorkspaceLayout);
+        (payload: RealtimePostgresChangesPayload<WorkspaceLayoutRecord>) => {
+          const newRecord = payload.new as WorkspaceLayoutRecord;
+          if (newRecord && 'layout' in newRecord) {
+            setLayout(newRecord.layout);
           }
         }
       )

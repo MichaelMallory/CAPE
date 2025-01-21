@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { cn } from '../../lib/utils';
-import { comicPatterns, commonPatterns } from '../../lib/breakpoints';
-import { comicMixins } from '../../lib/mixins';
+import { cn } from '@/lib/utils';
+import { comicPatterns, commonPatterns } from '@/lib/breakpoints';
+import { comicMixins } from '@/lib/mixins';
 
 interface ResponsiveLayoutProps {
   children: React.ReactNode;
@@ -24,14 +24,15 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
   reversed = false,
   gapSize = 'md',
 }) => {
-  // Use the comic pattern for the selected variant
-  const baseLayout = comicPatterns[variant];
+  const pattern = comicPatterns[variant];
   
-  // Apply gap size and handle reversed layout if applicable
+  // Apply responsive classes based on breakpoints
   const layoutClasses = cn(
-    baseLayout,
-    gapSizes[gapSize],
-    variant === 'heroSection' && reversed && 'lg:flex-row-reverse',
+    pattern.sm,
+    `md:${pattern.md}`,
+    `lg:${pattern.lg}`,
+    `xl:${pattern.xl}`,
+    reversed && variant === 'heroSection' && 'lg:flex-row-reverse',
     className
   );
 
@@ -52,8 +53,17 @@ export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
   children,
   className,
 }) => {
+  const containerPattern = commonPatterns.container;
+  
   return (
-    <div className={cn(commonPatterns.container, className)}>
+    <div className={cn(
+      containerPattern.sm,
+      `md:${containerPattern.md}`,
+      `lg:${containerPattern.lg}`,
+      `xl:${containerPattern.xl}`,
+      'mx-auto px-4',
+      className
+    )}>
       {children}
     </div>
   );

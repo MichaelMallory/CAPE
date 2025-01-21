@@ -17,29 +17,41 @@ export function createImpactEffect(scale = 1.2) {
   }
 }
 
-export const createHeroEntrance = (delay: number = 0): Variants => ({
-  initial: {
-    opacity: 0,
-    y: 20,
-  },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      delay,
-      ease: "easeOut"
+export const createHeroEntrance = (direction: 'top' | 'bottom' | 'left' | 'right'): Variants => {
+  const offset = 20;
+  const getOffset = () => {
+    switch (direction) {
+      case 'top': return { y: -offset };
+      case 'bottom': return { y: offset };
+      case 'left': return { x: -offset };
+      case 'right': return { x: offset };
     }
-  },
-  exit: {
-    opacity: 0,
-    y: 20,
-    transition: {
-      duration: 0.3,
-      ease: "easeIn"
+  };
+
+  return {
+    initial: {
+      opacity: 0,
+      ...getOffset(),
+    },
+    animate: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    },
+    exit: {
+      opacity: 0,
+      ...getOffset(),
+      transition: {
+        duration: 0.3,
+        ease: "easeIn"
+      }
     }
-  }
-});
+  };
+};
 
 export const powerSurge: Variants = {
   initial: {
