@@ -2,71 +2,52 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireAdmin } from '@/lib/auth';
+import { logBulkAuditEvents } from '@/lib/audit';
 
 // Validation schemas
 const bulkTeamAssignmentSchema = z.object({
   user_ids: z.array(z.string()).min(1),
-  team: z.string().min(1)
+  teams: z.array(z.string()).min(1),
+  reason: z.string().min(1).max(500)
 });
 
-// Helper function to verify admin status
-async function verifyAdmin(supabase: any) {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-  if (!user) return false;
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('clearance_level')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) throw profileError;
-  return profile?.clearance_level >= 8;
-}
-
-// Helper function to validate team
-async function validateTeam(supabase: any, teamName: string) {
-  const { data: team, error } = await supabase
+// Helper function to validate teams
+async function validateTeams(supabase: any, teams: string[]) {
+  const { data: validTeams, error } = await supabase
     .from('teams')
     .select('name')
-    .eq('name', teamName)
-    .single();
+    .in('name', teams);
 
   if (error) throw error;
-  if (!team) {
-    throw new Error(`Invalid team: ${teamName}`);
+
+  const validTeamNames = validTeams.map((team: { name: string }) => team.name);
+  const invalidTeams = teams.filter(team => !validTeamNames.includes(team));
+
+  if (invalidTeams.length > 0) {
+    throw new Error(`Invalid teams: ${invalidTeams.join(', ')}`);
   }
 
   return true;
 }
 
-// POST /api/admin/users/bulk/teams - Assign team to multiple users
+// POST /api/admin/users/bulk/teams - Assign teams to multiple users
 export async function POST(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user and verify admin status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
-
-    const isAdmin = await verifyAdmin(supabase);
-    if (!isAdmin) {
-      return new NextResponse('Forbidden', { status: 403 });
-    }
+    const admin = await requireAdmin();
 
     // Validate request body
     const body = await request.json();
-    const { user_ids, team } = bulkTeamAssignmentSchema.parse(body);
+    const { user_ids, teams, reason } = bulkTeamAssignmentSchema.parse(body);
 
-    // Validate team exists
-    await validateTeam(supabase, team);
+    // Validate teams exist
+    await validateTeams(supabase, teams);
 
-    // Get users' current teams
+    // Verify users exist
     const { data: users, error: fetchError } = await supabase
       .from('users')
-      .select('id, team_affiliations')
+      .select('id')
       .in('id', user_ids);
 
     if (fetchError) throw fetchError;
@@ -77,40 +58,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update each user's teams
-    const updates = users.map(async (user) => {
-      const currentTeams = user.team_affiliations || [];
-      const updatedTeams = Array.from(new Set([...currentTeams, team])); // Add new team, ensure uniqueness
+    // Update users' team affiliations
+    const { data: updatedUsers, error: updateError } = await supabase
+      .from('users')
+      .update({ team_affiliations: teams })
+      .in('id', user_ids)
+      .select();
 
-      const { data, error: updateError } = await supabase
-        .from('users')
-        .update({ team_affiliations: updatedTeams })
-        .eq('id', user.id)
-        .select();
+    if (updateError) throw updateError;
 
-      if (updateError) throw updateError;
-      return data;
-    });
-
-    const updatedUsers = await Promise.all(updates);
-
-    // Log the admin action for each user
-    const auditLogs = user_ids.map(targetId => ({
-      actor_id: user.id,
-      action: 'bulk_team_assignment',
-      target_id: targetId,
-      changes: { team_added: team }
-    }));
-
-    const { error: auditError } = await supabase
-      .from('audit_logs')
-      .insert(auditLogs);
-
-    if (auditError) throw auditError;
+    // Log the admin actions
+    await logBulkAuditEvents(
+      user_ids.map(targetId => ({
+        actor_id: admin.id,
+        action: 'bulk_team_assignment',
+        target_id: targetId,
+        changes: { teams },
+        reason
+      }))
+    );
 
     return NextResponse.json({
       updated_count: updatedUsers.length,
-      users: updatedUsers.flat()
+      users: updatedUsers
     });
   } catch (error) {
     console.error('Bulk team assignment error:', error);
@@ -122,15 +92,20 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof Error && error.message.startsWith('Invalid team:')) {
-      return NextResponse.json(
-        { message: error.message },
-        { status: 400 }
-      );
+    if (error instanceof Error) {
+      if (error.message === 'Forbidden') {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
+      if (error.message.startsWith('Invalid teams:')) {
+        return NextResponse.json(
+          { message: error.message },
+          { status: 400 }
+        );
+      }
     }
 
     return new NextResponse(
-      'Failed to assign team',
+      'Failed to assign teams',
       { status: 500 }
     );
   }

@@ -1,16 +1,14 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit';
 
 // POST /api/profile/avatar - Upload avatar image
 export async function POST(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
+    const user = await requireAuth();
 
     // Get form data
     const formData = await request.formData();
@@ -55,9 +53,21 @@ export async function POST(request: Request) {
 
     if (updateError) throw updateError;
 
+    // Log the avatar update
+    await logAuditEvent({
+      actor_id: user.id,
+      action: 'avatar_update',
+      changes: { avatar_url: publicUrl }
+    });
+
     return NextResponse.json({ avatar_url: publicUrl });
   } catch (error) {
     console.error('Avatar upload error:', error);
+
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     return new NextResponse(
       'Failed to upload avatar',
       { status: 500 }
@@ -69,11 +79,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
+    const user = await requireAuth();
 
     // Get current avatar URL
     const { data: profile, error: profileError } = await supabase
@@ -106,9 +112,20 @@ export async function DELETE() {
 
     if (updateError) throw updateError;
 
+    // Log the avatar deletion
+    await logAuditEvent({
+      actor_id: user.id,
+      action: 'avatar_delete'
+    });
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Avatar deletion error:', error);
+
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     return new NextResponse(
       'Failed to delete avatar',
       { status: 500 }

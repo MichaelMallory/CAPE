@@ -2,6 +2,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireAdmin } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit';
 
 const adminProfileUpdateSchema = z.object({
   status: z.enum(['active', 'inactive', 'suspended']).optional(),
@@ -16,22 +18,7 @@ export async function GET(
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user and verify admin status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
-
-    const { data: currentUserProfile, error: profileError } = await supabase
-      .from('users')
-      .select('clearance_level')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) throw profileError;
-    if (!currentUserProfile || currentUserProfile.clearance_level < 8) {
-      return new NextResponse('Forbidden', { status: 403 });
-    }
+    await requireAdmin();
 
     // Get target user's profile
     const { data: profile, error: targetProfileError } = await supabase
@@ -58,6 +45,11 @@ export async function GET(
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Profile fetch error:', error);
+
+    if (error instanceof Error && error.message === 'Forbidden') {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
     return new NextResponse(
       'Failed to fetch profile',
       { status: 500 }
@@ -72,22 +64,7 @@ export async function PATCH(
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user and verify admin status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
-
-    const { data: currentUserProfile, error: profileError } = await supabase
-      .from('users')
-      .select('clearance_level')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) throw profileError;
-    if (!currentUserProfile || currentUserProfile.clearance_level < 8) {
-      return new NextResponse('Forbidden', { status: 403 });
-    }
+    const admin = await requireAdmin();
 
     // Validate request body
     const body = await request.json();
@@ -105,9 +82,9 @@ export async function PATCH(
     if (!profile) return new NextResponse('Profile not found', { status: 404 });
 
     // Log the admin action
-    await supabase.from('audit_logs').insert({
-      actor_id: user.id,
-      action: 'profile_update',
+    await logAuditEvent({
+      actor_id: admin.id,
+      action: 'admin_profile_update',
       target_id: params.userId,
       changes: validatedData
     });
@@ -121,6 +98,10 @@ export async function PATCH(
         { message: 'Invalid request data', errors: error.errors },
         { status: 400 }
       );
+    }
+
+    if (error instanceof Error && error.message === 'Forbidden') {
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     return new NextResponse(

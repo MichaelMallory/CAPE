@@ -2,6 +2,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireAuth } from '@/lib/auth';
+import { logAuditEvent } from '@/lib/audit';
 
 // Validation schemas
 const notificationPreferencesSchema = z.object({
@@ -25,11 +27,7 @@ const profileUpdateSchema = z.object({
 export async function GET() {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
+    const user = await requireAuth();
 
     // Get profile data
     const { data: profile, error: profileError } = await supabase
@@ -54,6 +52,11 @@ export async function GET() {
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Profile fetch error:', error);
+    
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     return new NextResponse(
       'Failed to fetch profile',
       { status: 500 }
@@ -65,11 +68,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
+    const user = await requireAuth();
 
     // Validate request body
     const body = await request.json();
@@ -86,6 +85,14 @@ export async function PATCH(request: Request) {
     if (updateError) throw updateError;
     if (!profile) return new NextResponse('Profile not found', { status: 404 });
 
+    // Log the profile update
+    await logAuditEvent({
+      actor_id: user.id,
+      action: 'profile_update',
+      target_id: user.id,
+      changes: validatedData
+    });
+
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Profile update error:', error);
@@ -95,6 +102,10 @@ export async function PATCH(request: Request) {
         { message: 'Invalid request data', errors: error.errors },
         { status: 400 }
       );
+    }
+
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
     return new NextResponse(

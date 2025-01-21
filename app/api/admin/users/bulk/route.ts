@@ -2,6 +2,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireAdmin } from '@/lib/auth';
+import { logBulkAuditEvents } from '@/lib/audit';
 
 // Validation schemas
 const bulkUpdateSchema = z.object({
@@ -10,36 +12,13 @@ const bulkUpdateSchema = z.object({
   reason: z.string().min(1).max(500)
 });
 
-// Helper function to verify admin status
-async function verifyAdmin(supabase: any) {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-  if (!user) return false;
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('clearance_level')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) throw profileError;
-  return profile?.clearance_level >= 8;
-}
-
 // PATCH /api/admin/users/bulk - Update multiple users
 export async function PATCH(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
     
-    // Get current user and verify admin status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) throw authError;
-    if (!user) return new NextResponse('Unauthorized', { status: 401 });
-
-    const isAdmin = await verifyAdmin(supabase);
-    if (!isAdmin) {
-      return new NextResponse('Forbidden', { status: 403 });
-    }
+    // Verify admin status
+    const user = await requireAdmin();
 
     // Validate request body
     const body = await request.json();
@@ -68,20 +47,16 @@ export async function PATCH(request: Request) {
 
     if (updateError) throw updateError;
 
-    // Log the admin action for each user
-    const auditLogs = user_ids.map(targetId => ({
-      actor_id: user.id,
-      action: 'bulk_user_status_update',
-      target_id: targetId,
-      changes: { status },
-      reason
-    }));
-
-    const { error: auditError } = await supabase
-      .from('audit_logs')
-      .insert(auditLogs);
-
-    if (auditError) throw auditError;
+    // Log the admin actions
+    await logBulkAuditEvents(
+      user_ids.map(targetId => ({
+        actor_id: user.id,
+        action: 'bulk_user_status_update',
+        target_id: targetId,
+        changes: { status },
+        reason
+      }))
+    );
 
     return NextResponse.json({
       updated_count: updatedUsers.length,
@@ -95,6 +70,10 @@ export async function PATCH(request: Request) {
         { message: 'Invalid request data', errors: error.errors },
         { status: 400 }
       );
+    }
+
+    if (error instanceof Error && error.message === 'Forbidden') {
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     return new NextResponse(
