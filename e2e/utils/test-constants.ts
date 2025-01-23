@@ -3,38 +3,36 @@ import path from 'path';
 // Storage state for authenticated user sessions
 export const STORAGE_STATE = path.join(process.cwd(), 'e2e/.auth/user.json');
 
-// Test user credentials - these should be overridden by environment variables in CI
-export const TEST_USER = {
-  email: process.env.TEST_USER_EMAIL || 'test@hero-hq.com',
-  password: process.env.TEST_USER_PASSWORD || 'test-password',
-};
+// Test user credentials - these should match the seeded test accounts
+export const TEST_USERS = {
+  STANDARD: {
+    email: process.env.TEST_HERO_EMAIL || 'test_hero@cape.dev',
+    password: process.env.TEST_HERO_PASSWORD || 'test_hero123',
+  },
+  SUPPORT: {
+    email: process.env.TEST_SUPPORT_EMAIL || 'test_support@cape.dev',
+    password: process.env.TEST_SUPPORT_PASSWORD || 'test_support123',
+  },
+  MFA: {
+    email: 'test_hero@cape.dev', // Using hero account for MFA tests
+    password: process.env.TEST_HERO_PASSWORD || 'test_hero123',
+    verificationCode: '123456', // This should be configured in the MFA setup
+  },
+} as const;
 
 // Common test selectors
 export const SELECTORS = {
   LOGIN: {
-    emailInput: '[data-test-id="email"]',
-    passwordInput: '[data-test-id="password"]',
-    loginButton: '[data-test-id="login-button"]',
+    emailInput: '[data-testid="email"]',
+    passwordInput: '[data-testid="password"]',
+    loginButton: '[data-testid="login-button"]',
+    rememberMe: '[data-testid="remember-me"]',
+    forgotPassword: '[data-testid="forgot-password"]',
   },
   NAVIGATION: {
-    dashboard: '[data-test-id="nav-dashboard"]',
-    tickets: '[data-test-id="nav-tickets"]',
-    equipment: '[data-test-id="nav-equipment"]',
-    intelligence: '[data-test-id="nav-intelligence"]',
+    dashboard: '[data-testid="nav-dashboard"]',
+    tickets: '[data-testid="nav-tickets"]',
+    equipment: '[data-testid="nav-equipment"]',
+    intelligence: '[data-testid="nav-intelligence"]',
   },
-};
-
-export const TEST_HERO_CODENAME = 'TestHero';
-export const TEST_HERO_PASSWORD = 'password123!';
-
-export const TEST_USERS = {
-  STANDARD: {
-    codename: TEST_HERO_CODENAME,
-    password: TEST_HERO_PASSWORD,
-  },
-  MFA: {
-    codename: 'MFAHero',
-    password: TEST_HERO_PASSWORD,
-    verificationCode: '123456',
-  },
-} as const; 
+}; 

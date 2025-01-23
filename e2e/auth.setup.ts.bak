@@ -1,0 +1,23 @@
+import { test as setup, expect } from '@playwright/test';
+import { STORAGE_STATE, TEST_USERS } from './utils/test-constants';
+
+setup('authenticate', async ({ page }) => {
+  // Navigate to the login page
+  await page.goto('/login');
+
+  // Fill in the hero credentials
+  await page.getByLabel('Email').fill(TEST_USERS.STANDARD.email);
+  await page.getByLabel('Password').fill(TEST_USERS.STANDARD.password);
+  
+  // Click login and wait for navigation
+  await Promise.all([
+    page.waitForURL('/dashboard/hero'),
+    page.getByRole('button', { name: 'Enter HQ' }).click()
+  ]);
+
+  // Verify we're on the dashboard
+  await expect(page.getByTestId('hero-dashboard')).toBeVisible();
+  
+  // Save signed-in state
+  await page.context().storageState({ path: STORAGE_STATE });
+}); 

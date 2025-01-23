@@ -77,8 +77,10 @@ alter table if exists hero_workload enable row level security;
 do $$ begin
     drop policy if exists "Anyone can create tickets" on tickets;
     drop policy if exists "Support staff can view all tickets" on tickets;
-    drop policy if exists "Assigned heroes can view their tickets" on tickets;
+    drop policy if exists "Heroes can view their tickets" on tickets;
     drop policy if exists "Support staff can update tickets" on tickets;
+    drop policy if exists "Heroes can create tickets" on tickets;
+    drop policy if exists "Heroes can update their tickets" on tickets;
     drop policy if exists "Support staff can view ticket history" on ticket_history;
     drop policy if exists "Support staff can view metrics" on ticket_metrics;
     drop policy if exists "Support staff can view hero workload" on hero_workload;
@@ -88,9 +90,14 @@ exception
 end $$;
 
 -- Create policies
-create policy "Anyone can create tickets"
+create policy "Heroes can create tickets"
   on tickets for insert
-  with check (true);
+  with check (auth.uid() IS NOT NULL);
+
+create policy "Heroes can update their tickets"
+  on tickets for update
+  using (created_by = auth.uid())
+  with check (created_by = auth.uid());
 
 create policy "Support staff can view all tickets"
   on tickets for select
@@ -102,9 +109,12 @@ create policy "Support staff can view all tickets"
     )
   );
 
-create policy "Assigned heroes can view their tickets"
+create policy "Heroes can view their tickets"
   on tickets for select
-  using (assigned_to = auth.uid());
+  using (
+    created_by = auth.uid() -- Can see tickets they created
+    or assigned_to = auth.uid() -- Can see tickets assigned to them
+  );
 
 create policy "Support staff can update tickets"
   on tickets for update

@@ -1,21 +1,29 @@
-import { useEffect, useState } from 'react';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { User } from '@supabase/supabase-js';
 
 export type TicketPriority = 'OMEGA' | 'ALPHA' | 'BETA' | 'GAMMA';
-export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type TicketStatus = 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ESCALATED';
 
-interface Ticket {
+export interface Ticket {
   id: string;
   title: string;
   description?: string;
-  priority: TicketPriority;
-  status: TicketStatus;
+  status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ESCALATED' | 'ASSIGNED';
+  priority: 'OMEGA' | 'ALPHA' | 'BETA' | 'GAMMA';
+  type: 'MISSION' | 'EQUIPMENT' | 'INTELLIGENCE';
   created_by: string;
   assigned_to?: string;
   created_at: string;
   updated_at: string;
+  comments?: Array<{
+    content: string;
+    created_at: string;
+    user_id: string;
+    user_type: 'HERO' | 'SUPPORT';
+  }>;
   resolved_at?: string;
   closed_at?: string;
   last_escalated_at?: string;
@@ -56,117 +64,179 @@ interface UseQueueSystemReturn {
 }
 
 export function useQueueSystem(): UseQueueSystemReturn {
-  const supabase = useSupabaseClient();
-  const user = useUser();
+  const router = useRouter();
   const { toast } = useToast();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [metrics, setMetrics] = useState<QueueMetrics | null>(null);
   const [heroWorkloads, setHeroWorkloads] = useState<HeroWorkload[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [subscription, setSubscription] = useState<RealtimeChannel | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Load initial data
+  // Check authentication and get current user
   useEffect(() => {
-    async function loadData() {
-      try {
-        // Load tickets
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select('*')
-          .order('priority', { ascending: false })
-          .order('created_at', { ascending: true });
+    const checkAuth = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        router.push('/login');
+        return;
+      }
 
-        if (ticketError) throw ticketError;
-        setTickets(ticketData);
+      if (!session) {
+        router.push('/login');
+        return;
+      }
 
-        // Load metrics
-        const { data: metricData, error: metricError } = await supabase
-          .from('ticket_metrics')
+      setCurrentUser(session.user);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      setCurrentUser(session.user);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  // Load data function
+  const loadData = useCallback(async () => {
+    if (!currentUser) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Check user role from metadata
+      const isSupport = currentUser.user_metadata?.role === 'SUPPORT';
+
+      // Query tickets based on role
+      const ticketsQuery = supabase
+        .from('tickets')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Support staff can see all tickets, heroes only see their own
+      if (!isSupport) {
+        ticketsQuery.or(`created_by.eq.${currentUser.id},assigned_to.eq.${currentUser.id}`);
+      }
+
+      const { data: ticketsData, error: ticketsError } = await ticketsQuery;
+
+      if (ticketsError) throw ticketsError;
+      setTickets(ticketsData || []);
+
+      // Only fetch metrics for support staff
+      if (isSupport) {
+        const { data: metricsData, error: metricsError } = await supabase
+          .from('queue_metrics')
           .select('*')
-          .order('calculated_at', { ascending: false })
-          .limit(1)
           .single();
 
-        if (metricError && metricError.code !== 'PGRST116') throw metricError;
-        setMetrics(metricData);
+        if (metricsError) throw metricsError;
+        setMetrics(metricsData);
 
-        // Load hero workloads
-        const { data: workloadData, error: workloadError } = await supabase
-          .from('hero_workload')
+        const { data: workloadsData, error: workloadsError } = await supabase
+          .from('hero_workloads')
           .select('*')
           .order('current_tasks', { ascending: true });
 
-        if (workloadError) throw workloadError;
-        setHeroWorkloads(workloadData);
-      } catch (err) {
-        console.error('Error loading queue data:', err);
-        setError(err instanceof Error ? err : new Error('Failed to load queue data'));
-      } finally {
-        setIsLoading(false);
+        if (workloadsError) throw workloadsError;
+        setHeroWorkloads(workloadsData || []);
       }
-    }
 
+    } catch (err) {
+      setError(err as Error);
+      toast({
+        title: 'Error loading queue data',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser, toast]);
+
+  // Initial data load
+  useEffect(() => {
     loadData();
-  }, [supabase]);
+  }, [loadData]);
 
   // Set up realtime subscription
   useEffect(() => {
+    if (!currentUser) return;
+
+    const isSupport = currentUser.user_metadata?.role === 'SUPPORT';
+    const filter = isSupport ? undefined : `or(created_by.eq.${currentUser.id},assigned_to.eq.${currentUser.id})`;
+
     const channel = supabase
-      .channel('queue_changes')
+      .channel('queue-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'tickets'
+          table: 'tickets',
+          filter
         },
-        async (payload) => {
-          // Reload tickets to get fresh data
-          const { data, error } = await supabase
-            .from('tickets')
-            .select('*')
-            .order('priority', { ascending: false })
-            .order('created_at', { ascending: true });
-
-          if (error) {
-            console.error('Error reloading tickets:', error);
-            return;
-          }
-
-          setTickets(data);
-
-          // Show notification for new tickets
-          if (payload.eventType === 'INSERT') {
-            toast({
-              title: 'New Ticket',
-              description: `${payload.new.title} (${payload.new.priority})`,
-            });
-          }
+        () => {
+          loadData();
         }
       )
       .subscribe();
 
-    setSubscription(channel);
-
     return () => {
       channel.unsubscribe();
     };
-  }, [supabase, toast]);
+  }, [currentUser, loadData]);
 
   // Create ticket function
   const createTicket = async (data: Partial<Ticket>): Promise<Ticket> => {
-    const { data: ticket, error } = await supabase
-      .from('tickets')
-      .insert({
-        ...data,
-        created_by: user?.id
-      })
-      .select()
-      .single();
+    console.log('🎫 useQueueSystem - Creating Ticket', { data });
+    if (!currentUser?.id) {
+      console.error('🎫 useQueueSystem - No User ID');
+      throw new Error('User must be authenticated to create a ticket');
+    }
 
-    if (error) throw error;
-    return ticket;
+    try {
+      const { data: ticket, error } = await supabase
+        .from('tickets')
+        .insert({
+          ...data,
+          created_by: currentUser.id,
+          status: 'NEW',
+          type: data.type,
+          metadata: {
+            ...data.metadata,
+            created_at: new Date().toISOString(),
+          }
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('🎫 useQueueSystem - Error Creating Ticket:', error);
+        throw error;
+      }
+      
+      console.log('🎫 useQueueSystem - Ticket Created Successfully', { ticket });
+      
+      // Optimistically update the tickets list
+      setTickets(prev => [ticket, ...prev]);
+      
+      return ticket;
+    } catch (error) {
+      console.error('🎫 useQueueSystem - Error Creating Ticket:', error);
+      throw error;
+    }
   };
 
   // Update ticket function

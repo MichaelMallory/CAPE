@@ -22,25 +22,15 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Database } from '@/lib/database.types';
 
 const formSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
+  password: z.string().min(1, 'Password is required').min(6, 'Password must be at least 6 characters'),
 });
-
-const TEST_ACCOUNTS = {
-  support: {
-    email: 'test_support@cape.dev',
-    password: 'test_support123',
-  },
-  hero: {
-    email: 'test_hero@cape.dev',
-    password: 'test_hero123',
-  },
-};
 
 export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const supabase = createClientComponentClient<Database>();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -51,14 +41,11 @@ export function LoginForm() {
     },
   });
 
-  const handleQuickAccess = (role: 'support' | 'hero') => {
-    // Navigate directly to the dashboard
-    window.location.href = `/dashboard/${role}`;
-  };
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setError('');
+      setIsSubmitting(true);
+      console.log('Attempting login with:', values.email);
       
       // Sign in
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -67,12 +54,18 @@ export function LoginForm() {
       });
 
       if (signInError) {
+        console.error('Sign in error:', signInError);
+        setIsSubmitting(false);
         throw signInError;
       }
 
       if (data?.user) {
+        console.log('User authenticated:', data.user.id);
+        
         // Check if MFA is required
         if (data.user.factors && data.user.factors.length > 0) {
+          console.log('MFA required, redirecting to MFA page');
+          setIsSubmitting(false);
           router.push('/login/mfa');
           return;
         }
@@ -80,32 +73,62 @@ export function LoginForm() {
         setShowSuccess(true);
 
         // Get user's role from profile
-        const { data: profile, error: profileError } = await supabase
+        const { data: profiles, error: profileError } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', data.user.id)
-          .single();
+          .eq('id', data.user.id);
 
         if (profileError) {
+          console.error('Profile fetch error:', profileError);
+          setIsSubmitting(false);
           throw new Error('Failed to fetch user profile');
         }
 
-        if (!profile?.role) {
-          throw new Error('No role found in profile');
+        if (!profiles || profiles.length === 0) {
+          console.error('No profile found for user:', data.user.id);
+          setIsSubmitting(false);
+          throw new Error('No profile found');
         }
 
-        // Redirect based on role
-        const role = profile.role.toLowerCase();
-        
+        const profile = profiles[0];
+        console.log('User role:', profile.role);
+
+        // Update user metadata with role
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { role: profile.role }
+        });
+
+        if (updateError) {
+          console.error('Failed to update user metadata:', updateError);
+          setIsSubmitting(false);
+          throw updateError;
+        }
+
+        // Ensure session is set before navigation
+        const { data: session } = await supabase.auth.getSession();
+        if (!session?.session) {
+          throw new Error('Session not established');
+        }
+
         // Use router.refresh() to trigger a server-side revalidation
-        router.refresh();
+        await router.refresh();
+        
+        // Small delay to ensure session is propagated
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Then navigate to the dashboard
+        const role = profile.role.toLowerCase();
+        console.log('Redirecting to dashboard:', role);
         router.push(`/dashboard/${role}`);
+        
+        // Only disable loading state after navigation starts
+        setIsSubmitting(false);
       }
     } catch (err) {
+      console.error('Login error:', err);
       setShowSuccess(false);
-      setError(err instanceof Error ? err.message : 'Invalid credentials');
+      setError(err instanceof Error ? err.message : 'Invalid login credentials');
+      setIsSubmitting(false);
     }
   };
 
@@ -121,32 +144,6 @@ export function LoginForm() {
           animate="animate"
         />
       )}
-
-      {/* Quick Access Buttons */}
-      <div className="mb-8 space-y-4">
-        <Button
-          type="button"
-          className="w-full bg-blue-600 hover:bg-blue-700"
-          size="lg"
-          onClick={() => handleQuickAccess('support')}
-        >
-          Quick Access: Support Dashboard
-        </Button>
-        <Button
-          type="button"
-          className="w-full bg-purple-600 hover:bg-purple-700"
-          size="lg"
-          onClick={() => handleQuickAccess('hero')}
-        >
-          Quick Access: Hero Dashboard
-        </Button>
-      </div>
-
-      <div className="relative py-4 flex items-center">
-        <div className="flex-grow border-t border-gray-300"></div>
-        <span className="flex-shrink mx-4 text-gray-400">or use the form below</span>
-        <div className="flex-grow border-t border-gray-300"></div>
-      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -189,8 +186,8 @@ export function LoginForm() {
 
           {error && (
             <div
-              role="alert"
               className="p-2 text-sm text-red-500 bg-red-100 rounded"
+              data-testid="error-message"
             >
               {error}
             </div>
@@ -201,23 +198,17 @@ export function LoginForm() {
               type="submit"
               className="w-full font-comic"
               size="lg"
-              disabled={form.formState.isSubmitting}
+              disabled={isSubmitting}
             >
-              {form.formState.isSubmitting ? 'Accessing...' : 'Enter HQ'}
+              {isSubmitting ? 'Accessing...' : 'Enter HQ'}
             </Button>
 
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-center text-sm">
               <Link
                 href="/register"
                 className="text-primary hover:underline font-comic-secondary"
               >
                 Request Access
-              </Link>
-              <Link
-                href="/forgot-password"
-                className="text-primary hover:underline font-comic-secondary"
-              >
-                Forgot Password?
               </Link>
             </div>
           </div>

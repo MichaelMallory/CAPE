@@ -1,18 +1,15 @@
-import "./globals.css"
-import { Bangers, Comic_Neue } from "next/font/google"
-import { Toaster } from "@/components/ui/toaster"
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { AuthProvider } from './providers'
+import { Toaster } from '@/components/ui/toaster'
 
-const bangers = Bangers({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-bangers",
-})
+const inter = Inter({ subsets: ['latin'] })
 
-const comicNeue = Comic_Neue({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-action-man",
-})
+export const metadata: Metadata = {
+  title: 'C.A.P.E - Central Agency for Powered Entities',
+  description: 'Superhero support and management system',
+}
 
 export default function RootLayout({
   children,
@@ -20,10 +17,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${bangers.variable} ${comicNeue.variable}`}>
-        {children}
-        <Toaster />
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} min-h-screen antialiased`}>
+        <AuthProvider>
+          <div className="relative min-h-screen">
+            {children}
+            <Toaster />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )

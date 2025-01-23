@@ -1,227 +1,209 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card } from '../ui/card';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import dynamic from 'next/dynamic';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useQueueSystem, TicketPriority } from '@/hooks/use-queue-system';
+import { useToast } from '@/components/ui/use-toast';
 
-// Dynamically import the map component to avoid SSR issues
-const LocationPicker = dynamic(() => import('./location-picker'), { ssr: false });
+const ticketSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().min(1, 'Description is required'),
+  priority: z.enum(['OMEGA', 'ALPHA', 'BETA', 'GAMMA'] as const),
+  type: z.enum(['MISSION', 'EQUIPMENT', 'INTELLIGENCE'] as const),
+});
 
-const PRIORITY_LEVELS = [
-  { value: 'OMEGA', label: 'OMEGA - Global Threat' },
-  { value: 'ALPHA', label: 'ALPHA - City-wide Emergency' },
-  { value: 'BETA', label: 'BETA - Urgent Assistance' },
-  { value: 'GAMMA', label: 'GAMMA - Routine Support' },
-];
+type TicketFormData = z.infer<typeof ticketSchema>;
 
-const CATEGORIES = [
-  { value: 'MISSION', label: 'Mission Support' },
-  { value: 'EQUIPMENT', label: 'Equipment' },
-  { value: 'INTELLIGENCE', label: 'Intelligence' },
-];
+interface CreateTicketFormProps {
+  onSuccess?: () => void;
+}
 
-export function CreateTicketForm() {
-  const router = useRouter();
+export function CreateTicketForm({ onSuccess }: CreateTicketFormProps) {
+  const { createTicket } = useQueueSystem();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setErrors({});
+  const form = useForm<TicketFormData>({
+    resolver: zodResolver(ticketSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      priority: 'BETA',
+      type: 'MISSION',
+    },
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const validationErrors: Record<string, string> = {};
-
-    // Validate required fields
-    ['title', 'category', 'priority', 'description'].forEach(field => {
-      if (!formData.get(field)) {
-        validationErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
-      }
-    });
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setIsSubmitting(false);
-      return;
-    }
-
+  const onSubmit = async (data: TicketFormData) => {
+    console.log('🎫 CreateTicketForm - Submit Triggered', { data });
     try {
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        body: formData,
+      setIsSubmitting(true);
+      console.log('🎫 CreateTicketForm - Creating Ticket...');
+      const ticket = await createTicket({
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        status: 'NEW',
+        type: data.type,
+        metadata: {
+          created_at: new Date().toISOString(),
+        }
+      });
+      console.log('🎫 CreateTicketForm - Ticket Created Successfully', { ticket });
+
+      toast({
+        title: 'Ticket created',
+        description: 'Your support ticket has been submitted successfully.',
       });
 
-      if (!response.ok) throw new Error('Failed to create ticket');
-
-      const data = await response.json();
-      router.push(`/hero/tickets/${data.id}`);
+      form.reset();
+      onSuccess?.();
     } catch (error) {
-      console.error('Error creating ticket:', error);
-      setErrors({ submit: 'Failed to create ticket. Please try again.' });
+      console.error('🎫 CreateTicketForm - Error Creating Ticket:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create ticket. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
+      console.log('🎫 CreateTicketForm - Submission Complete');
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles(Array.from(e.target.files));
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
-  };
+  console.log('🎫 CreateTicketForm - Form State:', {
+    isSubmitting,
+    formValues: form.getValues(),
+    formErrors: form.formState.errors,
+    isDirty: form.formState.isDirty,
+    isValid: form.formState.isValid
+  });
 
   return (
-    <Card className="p-6 max-w-2xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
-          <Input
-            id="title"
-            name="title"
-            placeholder="Brief description of the issue"
-            className={errors.title ? 'border-red-500' : ''}
-          />
-          {errors.title && <p className="text-sm text-red-500">{errors.title}</p>}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select name="category">
-              <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map(category => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="priority">Priority</Label>
-            <Select name="priority">
-              <SelectTrigger className={errors.priority ? 'border-red-500' : ''}>
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITY_LEVELS.map(priority => (
-                  <SelectItem key={priority.value} value={priority.value}>
-                    {priority.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.priority && <p className="text-sm text-red-500">{errors.priority}</p>}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            name="description"
-            placeholder="Detailed description of the issue"
-            className={`min-h-[150px] ${errors.description ? 'border-red-500' : ''}`}
-          />
-          {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="files">Attachments</Label>
-          <Input
-            id="files"
-            name="files"
-            type="file"
-            multiple
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => document.getElementById('files')?.click()}
-          >
-            Attach Files
-          </Button>
-          {files.length > 0 && (
-            <ul className="mt-2 space-y-2">
-              {files.map((file, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span>{file.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(index)}
-                  >
-                    Remove
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button type="button" variant="outline">
-              Select Location
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Select Incident Location</DialogTitle>
-            </DialogHeader>
-            <LocationPicker
-              onLocationSelect={(lat, lng) => setLocation({ lat, lng })}
-              initialLocation={location}
+    <Form {...form}>
+      <form 
+        onSubmit={(e) => {
+          console.log('🎫 CreateTicketForm - Form Submit Event', e);
+          form.handleSubmit(onSubmit)(e);
+        }} 
+        className="space-y-6 max-w-4xl mx-auto p-4"
+      >
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Brief description of the issue" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {location && (
-              <input
-                type="hidden"
-                name="location"
-                value={JSON.stringify(location)}
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="OMEGA">Omega (Critical)</SelectItem>
+                        <SelectItem value="ALPHA">Alpha (High)</SelectItem>
+                        <SelectItem value="BETA">Beta (Medium)</SelectItem>
+                        <SelectItem value="GAMMA">Gamma (Low)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            )}
-          </DialogContent>
-        </Dialog>
 
-        {location && (
-          <div className="bg-muted p-2 rounded text-sm">
-            Location selected: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="MISSION">Mission Support</SelectItem>
+                        <SelectItem value="EQUIPMENT">Equipment</SelectItem>
+                        <SelectItem value="INTELLIGENCE">Intelligence</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
-        )}
 
-        {errors.submit && (
-          <p className="text-sm text-red-500">{errors.submit}</p>
-        )}
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Detailed explanation of the issue"
+                    className="min-h-[200px] resize-none"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Creating Ticket...' : 'Submit Ticket'}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? 'Creating...' : 'Create Ticket'}
+          </Button>
+        </div>
       </form>
-    </Card>
+    </Form>
   );
 } 

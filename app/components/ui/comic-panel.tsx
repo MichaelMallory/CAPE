@@ -1,76 +1,55 @@
-import * as React from 'react';
-import { motion } from 'framer-motion';
-import { AnimatedPanel } from './animated-panel';
-import { cn } from '../../lib/utils';
+import { cn } from "@/lib/utils";
+import { ReactNode } from "react";
+import { ComicTitleBox } from "./comic-title-box";
 
 interface ComicPanelProps {
-  children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'accent';
-  size?: 'sm' | 'md' | 'lg';
+  title: string;
+  children: ReactNode;
   className?: string;
-  isPowered?: boolean;
-  onClick?: () => void;
+  colorScheme?: "yellow" | "blue" | "green" | "red" | "purple";
 }
 
-const variantStyles = {
-  primary: 'border-primary bg-white/90',
-  secondary: 'border-secondary bg-white/90',
-  accent: 'border-accent bg-white/90',
+const colorSchemes = {
+  yellow: "bg-amber-500 dark:bg-amber-600",
+  blue: "bg-blue-500 dark:bg-blue-600",
+  green: "bg-emerald-500 dark:bg-emerald-600",
+  red: "bg-rose-500 dark:bg-rose-600",
+  purple: "bg-purple-500 dark:bg-purple-600",
 };
 
-const sizeStyles = {
-  sm: 'p-4',
-  md: 'p-6',
-  lg: 'p-8',
-};
-
-export const ComicPanel: React.FC<ComicPanelProps> = ({
+export function ComicPanel({
+  title,
   children,
-  variant = 'primary',
-  size = 'md',
   className,
-  isPowered = false,
-  onClick,
-}) => {
+  colorScheme = "yellow",
+}: ComicPanelProps) {
   return (
-    <AnimatedPanel
+    <div
       className={cn(
-        'comic-panel',
-        variantStyles[variant],
-        sizeStyles[size],
-        'relative overflow-hidden',
+        "relative rounded-lg shadow-lg border-2 border-black h-full",
+        "hover:shadow-xl transition-shadow duration-200",
+        colorSchemes[colorScheme],
         className
       )}
-      isPowered={isPowered}
-      onClick={onClick}
     >
-      {/* Comic panel corner effects */}
-      <motion.div
-        className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.2 }}
-      />
-      <motion.div
-        className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.3 }}
-      />
-      <motion.div
-        className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.4 }}
-      />
-      <motion.div
-        className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.5 }}
-      />
-      
-      {children}
-    </AnimatedPanel>
+      {/* Comic-style title box */}
+      <div className="absolute -top-1 -left-1 z-10">
+        <ComicTitleBox 
+          title={title}
+          variant={colorScheme === "blue" ? "secondary" : "primary"}
+        />
+      </div>
+
+      {/* Content area with inner border for comic effect */}
+      <div className="h-full p-2 pt-10">
+        {/* Inner panel border */}
+        <div className="absolute inset-2 border-2 border-black opacity-20 pointer-events-none" />
+        
+        {/* Actual content */}
+        <div className="relative z-0 h-full bg-white/95 dark:bg-gray-800/95 rounded p-2">
+          {children}
+        </div>
+      </div>
+    </div>
   );
-}; 
+} 
