@@ -1,14 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config } from 'dotenv';
+import path from 'path';
 
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-import dotenv from 'dotenv';
-import path from 'path';
 
 // Load test environment variables
-dotenv.config({ path: path.resolve(__dirname, 'e2e/.env.test') });
+config({ path: path.join(__dirname, 'e2e/.env.test') });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -16,13 +16,13 @@ dotenv.config({ path: path.resolve(__dirname, 'e2e/.env.test') });
 export default defineConfig({
   testDir: './e2e',
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -43,25 +43,24 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Setup projects for each auth type
     {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
+      name: 'setup-support',
+      testMatch: '**/setup/support-auth.setup.ts',
+      teardown: 'cleanup-support',
     },
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      name: 'cleanup-support',
+      testMatch: '**/setup/auth.cleanup.ts',
     },
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-      dependencies: ['setup'],
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-      dependencies: ['setup'],
-    },
+      name: 'chromium-support',
+      use: { 
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/support-staff.json'
+      },
+      dependencies: ['setup-support']
+    }
   ],
 
   /* Run your local dev server before starting the tests */
@@ -73,7 +72,7 @@ export default defineConfig({
   },
 
   // Global timeout for all tests
-  timeout: 60000,
+  timeout: 30000,
   
   // Amount of time to wait for expected condition
   expect: {

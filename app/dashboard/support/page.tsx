@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Settings } from 'lucide-react';
 import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -157,122 +158,116 @@ export default function SupportDashboard() {
   };
 
   return (
-    <main 
-      role="main"
-      aria-label="Support Dashboard"
-      className="container mx-auto p-4 space-y-8 grid relative min-h-screen"
-    >
-      <ComicBackground variant="purple" />
-      
-      <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-white">Support Dashboard</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsCustomizing(!isCustomizing)}
-            aria-label="Layout"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-          {isCustomizing && (
-            <Button variant="secondary" onClick={resetLayout}>
-              Reset Layout
+    <>
+      <ComicBackground variant="blue" />
+      <main className="container mx-auto p-4 space-y-8 bg-transparent relative">
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl font-comic text-white">Support Dashboard</h1>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCustomizing(!isCustomizing)}
+              aria-label="Layout"
+            >
+              <Settings className="h-5 w-5" />
             </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Customization Panel */}
-      {isCustomizing && (
-        <div className="bg-card p-4 rounded-lg shadow">
-          <h2 className="text-lg font-bold mb-4">Customize Dashboard</h2>
-          <div className="space-y-4">
-            {panels.map(panel => (
-              <div key={panel.id} className="flex items-center justify-between">
-                <span>{panel.title}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => togglePanelVisibility(panel.id)}
-                  aria-label={`Toggle ${panel.title}`}
-                >
-                  {panel.visible ? 'Hide' : 'Show'}
-                </Button>
-              </div>
-            ))}
+            {isCustomizing && (
+              <Button variant="secondary" onClick={resetLayout}>
+                Reset Layout
+              </Button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Dashboard Grid */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="dashboard-grid">
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className={cn(
-                "grid gap-4",
-                "grid-cols-3",
-                "relative",
-                "w-full"
-              )}
-            >
-              {panels
-                .filter(panel => panel.visible)
-                .sort((a, b) => a.order - b.order)
-                .map((panel, index) => {
-                  const Component = COMPONENTS[panel.id as keyof typeof COMPONENTS];
-                  return (
-                    <Draggable 
-                      key={panel.id} 
-                      draggableId={panel.id} 
-                      index={index}
-                    >
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className={cn(
-                            "panel-container h-full",
-                            "transform",
-                            snapshot.isDragging && "scale-105 shadow-xl",
-                            panel.id === 'ticket-queue' && "col-span-2 row-span-2"
-                          )}
-                          style={{ 
-                            ...provided.draggableProps.style,
-                            width: panelSizes[panel.id]?.width,
-                            minWidth: 200,
-                            maxWidth: '100%'
-                          }}
-                        >
-                          <ComicPanel
-                            title={panel.title}
-                            colorScheme={panelColors[panel.id as keyof typeof panelColors]}
-                          >
-                            <div className="h-full">
-                              <Component />
-                              <div
-                                className="resize-handle absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize hover:bg-primary/20 z-10 transition-colors"
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  startResize(panel.id, e);
-                                }}
-                              />
-                            </div>
-                          </ComicPanel>
-                        </div>
-                      )}
-                    </Draggable>
-                  );
-                })}
-              {provided.placeholder}
+        {/* Customization Panel */}
+        {isCustomizing && (
+          <div className="bg-card p-4 rounded-lg shadow">
+            <h2 className="text-lg font-bold mb-4">Customize Dashboard</h2>
+            <div className="space-y-4">
+              {panels.map(panel => (
+                <div key={panel.id} className="flex items-center justify-between">
+                  <span>{panel.title}</span>
+                  <Switch
+                    checked={panel.visible}
+                    onCheckedChange={() => togglePanelVisibility(panel.id)}
+                    aria-label={`Toggle ${panel.title}`}
+                  />
+                </div>
+              ))}
             </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-    </main>
+          </div>
+        )}
+
+        {/* Dashboard Grid */}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="dashboard-grid">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className={cn(
+                  "grid gap-4",
+                  "grid-cols-3",
+                  "relative",
+                  "w-full"
+                )}
+              >
+                {panels
+                  .filter(panel => panel.visible)
+                  .sort((a, b) => a.order - b.order)
+                  .map((panel, index) => {
+                    const Component = COMPONENTS[panel.id as keyof typeof COMPONENTS];
+                    return (
+                      <Draggable 
+                        key={panel.id} 
+                        draggableId={panel.id} 
+                        index={index}
+                      >
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={cn(
+                              "panel-container h-full",
+                              "transform",
+                              snapshot.isDragging && "scale-105 shadow-xl",
+                              panel.id === 'ticket-queue' && "col-span-2 row-span-2"
+                            )}
+                            style={{ 
+                              ...provided.draggableProps.style,
+                              width: panelSizes[panel.id]?.width,
+                              minWidth: 200,
+                              maxWidth: '100%'
+                            }}
+                          >
+                            <ComicPanel
+                              title={panel.title}
+                              colorScheme={panelColors[panel.id as keyof typeof panelColors]}
+                            >
+                              <div className="h-full">
+                                <Component />
+                                <div
+                                  className="resize-handle absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize hover:bg-primary/20 z-10 transition-colors"
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    startResize(panel.id, e);
+                                  }}
+                                />
+                              </div>
+                            </ComicPanel>
+                          </div>
+                        )}
+                      </Draggable>
+                    );
+                  })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+      </main>
+    </>
   );
 } 

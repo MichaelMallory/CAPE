@@ -45,27 +45,27 @@ const COMPONENTS = {
   'quick-actions': QuickActions,
   'activity-feed': ActivityFeed,
   'ticket-management': () => {
-    const [activeTab, setActiveTab] = useState('list');
+    const [isCreating, setIsCreating] = useState(false);
     
     return (
       <div className="h-[calc(100%-2rem)]">
         <Card className="h-full flex flex-col overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="w-full justify-start border-b rounded-none px-2">
-              <TabsTrigger value="list">My Tickets</TabsTrigger>
-              <TabsTrigger value="create">Create Ticket</TabsTrigger>
-            </TabsList>
-            <TabsContent value="list" className="flex-1 p-2 mt-0 overflow-hidden">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">My Support Tickets</h2>
-                <Button onClick={() => setActiveTab('create')}>Create Ticket</Button>
-              </div>
+          <div className="flex-1 flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-xl font-semibold">My Support Tickets</h2>
+              <Button onClick={() => setIsCreating(true)}>Create Ticket</Button>
+            </div>
+            <div className="flex-1 p-4 overflow-auto">
               <TicketList />
-            </TabsContent>
-            <TabsContent value="create" className="flex-1 p-4 mt-0 overflow-auto">
-              <CreateTicketForm onSuccess={() => setActiveTab('list')} />
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
+
+          {isCreating && (
+            <CreateTicketForm 
+              onSuccess={() => setIsCreating(false)}
+              onClose={() => setIsCreating(false)}
+            />
+          )}
         </Card>
       </div>
     );

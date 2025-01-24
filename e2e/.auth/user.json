@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "sb-qvtagodjxdlnlvdwyadx-auth-token",
-      "value": "%5B%22eyJhbGciOiJIUzI1NiIsImtpZCI6IloxaHhMYjBFcE4xdTVYazYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3F2dGFnb2RqeGRsbmx2ZHd5YWR4LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJhYjExNjI2ZS02MjRlLTQ0MjgtOGFkZS0yZjljYjM2YzEyN2QiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzM3NjAwNDg1LCJpYXQiOjE3Mzc1OTY4ODUsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWUsInJvbGUiOiJIRVJPIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3Mzc1OTY4ODV9XSwic2Vzc2lvbl9pZCI6ImJmMDYwYjY4LWU2ZDYtNGRlMi1hNzU5LTJmYjA5MWM5YzQ2YyIsImlzX2Fub255bW91cyI6ZmFsc2V9._rBEgeaxrC3xNN2dfqtzHOP1RJPBsi08dtWcmfj8IBM%22%2C%22QV8C0GUVqr2RnUJ5Bm0mhQ%22%2Cnull%2Cnull%2Cnull%5D",
+      "value": "%5B%22eyJhbGciOiJIUzI1NiIsImtpZCI6IloxaHhMYjBFcE4xdTVYazYiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3F2dGFnb2RqeGRsbmx2ZHd5YWR4LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJhOGRlYzJmOS1hMWE0LTQ0NTUtYjE2Zi00YTgyNmRhYTIxYmUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzM3Njc4MTgyLCJpYXQiOjE3Mzc2NzQ1ODIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWUsInJvbGUiOiJIRVJPIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3Mzc2NzQ1ODJ9XSwic2Vzc2lvbl9pZCI6Ijk4YTA0NzM4LTY2N2ItNDQzYS1iYzlkLWU1ODE4N2Y0ZDcyMCIsImlzX2Fub255bW91cyI6ZmFsc2V9.yNMgThd3CxVwdoxxsYR-joqjiEhvYDenMDokm66uV_A%22%2C%22OYmOcuVUn8w2V66AvdYHuA%22%2Cnull%2Cnull%2Cnull%5D",
       "domain": "localhost",
       "path": "/",
-      "expires": 1772156885.393795,
+      "expires": 1772234583.106215,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"

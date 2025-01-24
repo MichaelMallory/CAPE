@@ -77,4 +77,27 @@
   body {
     @apply bg-transparent text-foreground;
   }
+}
+
+/* Add solid background colors for select components */
+.select-content {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.select-trigger {
+  @apply bg-white dark:bg-gray-800;
+}
+
+.select-item {
+  @apply bg-white dark:bg-gray-800;
+}
+
+/* Dialog styles */
+.dialog-content {
+  @apply bg-white dark:bg-gray-800 shadow-xl border-2 !important;
+}
+
+/* Ensure proper z-indexing for select dropdowns */
+[data-radix-popper-content-wrapper] {
+  @apply z-50 !important;
 } 
