@@ -1,51 +1,95 @@
-import React, { useCallback, useState } from 'react';
+'use client';
+
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Image from 'next/image';
-import { Button } from './button';
-import { ActionEffect } from './action-effect';
+import { Button } from '@/components/ui/button';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useToast } from '@/hooks/use-toast';
+import { ActionEffect } from '@/components/ui/action-effect';
+import { useAuth } from '@/hooks/use-auth';
 
 interface AvatarUploadProps {
-  currentAvatarUrl?: string;
+  currentAvatarUrl?: string | null;
   onUploadComplete: (url: string) => void;
 }
 
 export function AvatarUpload({ currentAvatarUrl, onUploadComplete }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [showEffect, setShowEffect] = useState(false);
+  const { toast } = useToast();
   const supabase = createClientComponentClient();
+  const { user } = useAuth();
+
+  const deleteOldAvatar = async (url: string) => {
+    try {
+      // Extract the path from the URL
+      const path = url.split('/').pop();
+      if (!path) return;
+
+      // Delete the old file
+      const { error } = await supabase.storage
+        .from('avatars')
+        .remove([path]);
+
+      if (error) {
+        console.error('Error deleting old avatar:', error);
+      }
+    } catch (error) {
+      console.error('Error in deleteOldAvatar:', error);
+    }
+  };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
+    if (!user?.id || acceptedFiles.length === 0) return;
+
+    const file = acceptedFiles[0];
+    setIsUploading(true);
 
     try {
-      setIsUploading(true);
-      const file = acceptedFiles[0];
+      // Generate a unique file name using user ID
       const fileExt = file.name.split('.').pop();
-      const { data: { user } } = await supabase.auth.getUser();
-      const filePath = `${user?.id}/avatar.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      // Upload the file to Supabase storage
-      const { error: uploadError, data } = await supabase.storage
-        .from('profiles')
-        .upload(filePath, file, { upsert: true });
+      // Delete old avatar if it exists
+      if (currentAvatarUrl) {
+        await deleteOldAvatar(currentAvatarUrl);
+      }
+
+      // Upload the new file
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          upsert: true // This will overwrite if the file exists
+        });
 
       if (uploadError) throw uploadError;
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
-        .getPublicUrl(filePath);
+        .from('avatars')
+        .getPublicUrl(fileName);
 
       onUploadComplete(publicUrl);
       setShowEffect(true);
       setTimeout(() => setShowEffect(false), 1000);
+
+      toast({
+        title: 'Avatar Updated!',
+        description: 'Your new profile picture has been uploaded.',
+        variant: 'default',
+      });
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      console.error('Upload error:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'Failed to upload image. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsUploading(false);
     }
-  }, [supabase, onUploadComplete]);
+  }, [currentAvatarUrl, onUploadComplete, supabase, toast, user]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -73,7 +117,7 @@ export function AvatarUpload({ currentAvatarUrl, onUploadComplete }: AvatarUploa
           </div>
         )}
         {showEffect && (
-          <ActionEffect type="pow" className="absolute -right-4 -top-4" data-testid="action-effect" />
+          <ActionEffect type="pow" className="absolute -right-4 -top-4" />
         )}
       </div>
 

@@ -43,7 +43,6 @@ export function TicketDetail({ ticketId }: TicketDetailProps) {
         comments: [...(ticket.comments || []), {
           content: newComment,
           created_at: new Date().toISOString(),
-          user_id: ticket.created_by, // This should be the current user's ID
           user_type: 'HERO'
         }]
       });

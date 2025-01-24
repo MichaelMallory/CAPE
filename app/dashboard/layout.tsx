@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Shield, User } from "lucide-react"
 import { Database } from "@/lib/database.types"
+import { signOut } from '@/actions/auth'
 
 async function getUserProfile() {
   const supabase = createServerComponentClient<Database>({ cookies })
@@ -63,7 +64,7 @@ export default async function DashboardLayout({
               <Button variant="ghost" asChild>
                 <Link href="/profile">Profile</Link>
               </Button>
-              <form action="/auth/signout" method="post">
+              <form action={signOut}>
                 <Button variant="outline" type="submit">Sign Out</Button>
               </form>
             </nav>

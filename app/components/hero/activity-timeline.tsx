@@ -67,7 +67,11 @@ export async function ActivityTimeline({ heroId }: { heroId: string }) {
 
   if (activities.length === 0) {
     return (
-      <ComicPanel variant="secondary" className="p-4 text-center text-muted-foreground">
+      <ComicPanel 
+        title="Activity Timeline"
+        colorScheme="blue" 
+        className="p-4 text-center text-muted-foreground"
+      >
         No activity recorded yet, hero! Time to make history!
       </ComicPanel>
     );

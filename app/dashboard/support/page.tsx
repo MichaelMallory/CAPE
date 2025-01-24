@@ -233,7 +233,7 @@ export default function SupportDashboard() {
                               "panel-container h-full",
                               "transform",
                               snapshot.isDragging && "scale-105 shadow-xl",
-                              panel.id === 'ticket-queue' && "col-span-2 row-span-2"
+                              (panel.id === 'ticket-queue' || panel.id === 'team-chat') && "col-span-2 row-span-2"
                             )}
                             style={{ 
                               ...provided.draggableProps.style,

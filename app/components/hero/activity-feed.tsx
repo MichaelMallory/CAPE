@@ -127,17 +127,17 @@ export function ActivityFeed() {
 
   if (loading) {
     return (
-      <ComicPanel variant="secondary" className="p-4 text-center text-muted-foreground">
+      <div className="p-4 text-center text-muted-foreground">
         Loading activities...
-      </ComicPanel>
+      </div>
     );
   }
 
   if (activities.length === 0) {
     return (
-      <ComicPanel variant="secondary" className="p-4 text-center text-muted-foreground">
+      <div className="p-4 text-center text-muted-foreground">
         No activity recorded yet, hero! Time to make history!
-      </ComicPanel>
+      </div>
     );
   }
 

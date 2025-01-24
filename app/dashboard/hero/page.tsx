@@ -262,6 +262,7 @@ export default function HeroDashboard() {
                             className={cn(
                               "h-full",
                               (panel.id === 'mission-status' || panel.id === 'ticket-management') && "col-span-2 row-span-2",
+                              panel.id === 'alert-center' && "col-span-2",
                               panel.id === 'ticket-management' && "h-[800px]"
                             )}
                           >

@@ -100,16 +100,6 @@ export function QuickActions() {
     return aIndex - bIndex;
   });
 
-  const handleActionClick = (action: Action) => {
-    setSelectedAction(action);
-    // Update recent actions
-    const updatedActions = [
-      action.id,
-      ...recentActions.filter((id) => id !== action.id),
-    ].slice(0, 3); // Keep only last 3
-    setRecentActions(updatedActions);
-  };
-
   const handleBackupRequest = async (formData: FormData) => {
     const data = {
       priority: formData.get('priority'),
@@ -179,13 +169,12 @@ export function QuickActions() {
           return (
             <Card
               key={action.id}
-              className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => handleActionClick(action)}
+              className="hover:border-primary/50 transition-colors"
             >
               <CardContent className="p-4 text-center space-y-2">
                 <Icon className={`h-6 w-6 mx-auto ${action.color}`} />
-                <div>
-                  <h3 className="font-comic text-sm">{action.label}</h3>
+                <div className="min-h-[3rem] flex flex-col justify-center">
+                  <h3 className="font-comic text-sm break-words">{action.label}</h3>
                   <p className="text-xs text-muted-foreground">{action.description}</p>
                 </div>
               </CardContent>
