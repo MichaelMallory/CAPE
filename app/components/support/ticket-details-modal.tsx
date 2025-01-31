@@ -528,7 +528,11 @@ export function TicketDetailsModal({ ticket, open, onOpenChange }: TicketDetails
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to analyze ticket');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to analyze ticket');
+      }
+      
       const analysis = await response.json();
 
       // Update priority
@@ -654,7 +658,7 @@ export function TicketDetailsModal({ ticket, open, onOpenChange }: TicketDetails
       setAnalysisMessages(prev => [
         ...prev,
         "❌ Error: Analysis failed. Please try again.",
-        error instanceof Error ? error.message : "Unknown error occurred"
+        error instanceof Error ? `Error details: ${error.message}` : "Unknown error occurred"
       ]);
     } finally {
       setIsAnalyzing(false);
