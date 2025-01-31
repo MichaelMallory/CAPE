@@ -528,10 +528,19 @@ export function TicketDetailsModal({ ticket, open, onOpenChange }: TicketDetails
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse API response:', parseError);
+        throw new Error('Failed to parse API response. Check Vercel logs for details.');
+      }
       
       if (!response.ok || data.error) {
-        throw new Error(data.message || data.details || 'Failed to analyze ticket');
+        console.error('API error details:', data);
+        throw new Error(
+          data.details || data.message || 'Failed to analyze ticket'
+        );
       }
 
       const analysis = data;

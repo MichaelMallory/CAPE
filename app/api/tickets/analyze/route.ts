@@ -98,8 +98,34 @@ Return ONLY a valid JSON object with the following structure:
 
 // Helper function to clean model responses
 function cleanModelResponse(response: string): string {
+  if (!response) {
+    throw new Error('Empty response from model');
+  }
+
   // Remove markdown code block syntax if present
-  return response.replace(/```json\n?|\n?```/g, '').trim();
+  let cleaned = response.replace(/```json\n?|\n?```/g, '').trim();
+  
+  // If the response starts with a newline, remove it
+  cleaned = cleaned.replace(/^\n+/, '');
+  
+  // If there's any text before the first {, remove it
+  const firstBrace = cleaned.indexOf('{');
+  if (firstBrace > 0) {
+    cleaned = cleaned.slice(firstBrace);
+  }
+  
+  // If there's any text after the last }, remove it
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (lastBrace !== -1 && lastBrace < cleaned.length - 1) {
+    cleaned = cleaned.slice(0, lastBrace + 1);
+  }
+
+  // Verify we have a valid JSON structure
+  if (!cleaned.startsWith('{') || !cleaned.endsWith('}')) {
+    throw new Error('Invalid JSON structure in model response');
+  }
+
+  return cleaned;
 }
 
 interface Hero {
@@ -122,12 +148,22 @@ interface HeroWithScore extends Hero {
 
 export async function POST(request: Request) {
   try {
+    console.log('Starting ticket analysis...');
     const { ticketId, title, description } = await request.json();
+    console.log('Received request data:', { ticketId, title, description });
     
     // Get Supabase client
     const supabase = createClient(cookies());
+    console.log('Supabase client created');
 
     // Verify environment variables
+    const envCheck = {
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasPineconeKey: !!process.env.PINECONE_API_KEY,
+      hasPineconeIndex: !!process.env.PINECONE_INDEX,
+    };
+    console.log('Environment variables check:', envCheck);
+
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ 
         error: true,
@@ -149,6 +185,7 @@ export async function POST(request: Request) {
 
     // 1. Priority Assessment
     try {
+      console.log('Setting up priority assessment chain...');
       const priorityChain = RunnableSequence.from([
         priorityTemplate,
         model,
@@ -158,6 +195,7 @@ export async function POST(request: Request) {
         callbacks: [tracer]
       });
 
+      console.log('Invoking priority assessment...');
       const priorityResult = await priorityChain.invoke({
         title,
         description,
@@ -167,8 +205,12 @@ export async function POST(request: Request) {
       console.log('Priority Result (cleaned):', cleanPriorityResult);
       
       try {
+        console.log('Parsing priority result...');
         const priorityData = JSON.parse(cleanPriorityResult);
+        console.log('Priority data parsed successfully:', priorityData);
+
         // 2. Generate Objectives
+        console.log('Setting up objectives chain...');
         const objectivesChain = RunnableSequence.from([
           objectivesTemplate,
           model,
@@ -178,126 +220,141 @@ export async function POST(request: Request) {
           callbacks: [tracer]
         });
 
+        console.log('Invoking objectives generation...');
         const objectivesResult = await objectivesChain.invoke({
           title,
           description,
           priority: priorityData.level,
         });
-
         console.log('Objectives Result (raw):', objectivesResult);
         const cleanObjectivesResult = cleanModelResponse(objectivesResult);
         console.log('Objectives Result (cleaned):', cleanObjectivesResult);
-        const objectivesData = JSON.parse(cleanObjectivesResult);
 
-        // 3. Get available heroes using vector similarity
-        const requiredPowers = objectivesData.objectives
-          .flatMap((obj: any) => obj.required_powers)
-          .filter((power: string, index: number, self: string[]) => self.indexOf(power) === index);
+        try {
+          console.log('Parsing objectives result...');
+          const objectivesData = JSON.parse(cleanObjectivesResult);
+          console.log('Objectives data parsed successfully:', objectivesData);
 
-        // Find similar heroes using Pinecone
-        const similarHeroes = await findSimilarHeroes(requiredPowers);
-        
-        // Get full hero details from database for the matched heroes
-        let { data: heroes } = await supabase
-          .from('profiles')
-          .select('id, codename, powers, status')
-          .eq('status', 'ACTIVE')
-          .eq('role', 'HERO')
-          .in('id', similarHeroes.map(h => h.id));
+          // 3. Get available heroes using vector similarity
+          const requiredPowers = objectivesData.objectives
+            .flatMap((obj: any) => obj.required_powers)
+            .filter((power: string, index: number, self: string[]) => self.indexOf(power) === index);
 
-        if (!heroes || heroes.length === 0) {
-          // Fallback: If no heroes match, get a small sample of active heroes
-          const { data: fallbackHeroes } = await supabase
+          // Find similar heroes using Pinecone
+          const similarHeroes = await findSimilarHeroes(requiredPowers);
+          
+          // Get full hero details from database for the matched heroes
+          let { data: heroes } = await supabase
             .from('profiles')
             .select('id, codename, powers, status')
             .eq('status', 'ACTIVE')
             .eq('role', 'HERO')
-            .limit(5);  // Limit to 5 heroes to keep costs down
+            .in('id', similarHeroes.map(h => h.id));
+
+          if (!heroes || heroes.length === 0) {
+            // Fallback: If no heroes match, get a small sample of active heroes
+            const { data: fallbackHeroes } = await supabase
+              .from('profiles')
+              .select('id, codename, powers, status')
+              .eq('status', 'ACTIVE')
+              .eq('role', 'HERO')
+              .limit(5);  // Limit to 5 heroes to keep costs down
+              
+            if (!fallbackHeroes || fallbackHeroes.length === 0) {
+              throw new Error('No active heroes found in database');
+            }
             
-          if (!fallbackHeroes || fallbackHeroes.length === 0) {
-            throw new Error('No active heroes found in database');
+            heroes = fallbackHeroes;
           }
-          
-          heroes = fallbackHeroes;
+
+          // Enhance heroes data with similarity scores
+          const heroesWithScores: HeroWithScore[] = heroes.map(hero => ({
+            ...hero,
+            similarity_score: similarHeroes.find(h => h.id === hero.id)?.score || 0
+          }));
+
+          console.log('Available Heroes:', heroesWithScores);
+
+          // 4. Match Heroes (now with pre-filtered candidates)
+          const heroMatchingChain = RunnableSequence.from([
+            heroMatchingTemplate,
+            model,
+            new StringOutputParser(),
+          ]).withConfig({ 
+            tags: ["hero_matching"],
+            callbacks: [tracer]
+          });
+
+          const heroMatchingResult = await heroMatchingChain.invoke({
+            objectives: JSON.stringify(objectivesData.objectives),
+            required_powers: JSON.stringify(requiredPowers),
+            heroes_data: JSON.stringify(heroesWithScores),
+          });
+
+          console.log('Hero Matching Result (raw):', heroMatchingResult);
+          const cleanHeroMatchingResult = cleanModelResponse(heroMatchingResult);
+          console.log('Hero Matching Result (cleaned):', cleanHeroMatchingResult);
+          const heroMatches = JSON.parse(cleanHeroMatchingResult);
+
+          // 5. Combine all results
+          const analysis = {
+            ticket_id: ticketId,
+            priority_assessment: priorityData,
+            threat_analysis: {
+              summary: priorityData.reasoning,
+              required_powers: objectivesData.objectives
+                .flatMap((obj: any) => obj.required_powers)
+                .filter((power: string, index: number, self: string[]) => self.indexOf(power) === index),
+              estimated_threat_level: priorityData.confidence
+            },
+            generated_objectives: objectivesData.objectives,
+            hero_matches: heroMatches.hero_matches,
+            created_at: new Date().toISOString(),
+          };
+
+          // 6. Store analysis in database
+          const { error: upsertError } = await supabase
+            .from('ai_analyses')
+            .upsert([analysis], { onConflict: 'ticket_id' });
+
+          if (upsertError) {
+            console.error('Database upsert error:', upsertError);
+            throw upsertError;
+          }
+
+          return NextResponse.json(analysis);
+        } catch (parseError) {
+          console.error('Failed to parse objectives result:', parseError);
+          console.error('Raw objectives result that failed parsing:', cleanObjectivesResult);
+          return NextResponse.json({ 
+            error: true,
+            message: 'Failed to parse objectives response',
+            details: `Invalid objectives format: ${parseError.message}`
+          }, { status: 500 });
         }
-
-        // Enhance heroes data with similarity scores
-        const heroesWithScores: HeroWithScore[] = heroes.map(hero => ({
-          ...hero,
-          similarity_score: similarHeroes.find(h => h.id === hero.id)?.score || 0
-        }));
-
-        console.log('Available Heroes:', heroesWithScores);
-
-        // 4. Match Heroes (now with pre-filtered candidates)
-        const heroMatchingChain = RunnableSequence.from([
-          heroMatchingTemplate,
-          model,
-          new StringOutputParser(),
-        ]).withConfig({ 
-          tags: ["hero_matching"],
-          callbacks: [tracer]
-        });
-
-        const heroMatchingResult = await heroMatchingChain.invoke({
-          objectives: JSON.stringify(objectivesData.objectives),
-          required_powers: JSON.stringify(requiredPowers),
-          heroes_data: JSON.stringify(heroesWithScores),
-        });
-
-        console.log('Hero Matching Result (raw):', heroMatchingResult);
-        const cleanHeroMatchingResult = cleanModelResponse(heroMatchingResult);
-        console.log('Hero Matching Result (cleaned):', cleanHeroMatchingResult);
-        const heroMatches = JSON.parse(cleanHeroMatchingResult);
-
-        // 5. Combine all results
-        const analysis = {
-          ticket_id: ticketId,
-          priority_assessment: priorityData,
-          threat_analysis: {
-            summary: priorityData.reasoning,
-            required_powers: objectivesData.objectives
-              .flatMap((obj: any) => obj.required_powers)
-              .filter((power: string, index: number, self: string[]) => self.indexOf(power) === index),
-            estimated_threat_level: priorityData.confidence
-          },
-          generated_objectives: objectivesData.objectives,
-          hero_matches: heroMatches.hero_matches,
-          created_at: new Date().toISOString(),
-        };
-
-        // 6. Store analysis in database
-        const { error: upsertError } = await supabase
-          .from('ai_analyses')
-          .upsert([analysis], { onConflict: 'ticket_id' });
-
-        if (upsertError) {
-          console.error('Database upsert error:', upsertError);
-          throw upsertError;
-        }
-
-        return NextResponse.json(analysis);
       } catch (parseError) {
         console.error('Failed to parse priority result:', parseError);
+        console.error('Raw priority result that failed parsing:', cleanPriorityResult);
         return NextResponse.json({ 
           error: true,
-          message: 'Failed to parse AI response',
-          details: 'The AI generated an invalid response format'
+          message: 'Failed to parse priority response',
+          details: `Invalid priority format: ${parseError.message}`
         }, { status: 500 });
       }
     } catch (error) {
-      console.error('Priority assessment failed:', error);
+      console.error('Error in priority/objectives chain:', error);
       return NextResponse.json({ 
         error: true,
-        message: 'Priority assessment failed',
+        message: 'Chain execution failed',
         details: error instanceof Error ? error.message : 'Unknown error occurred'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('AI Analysis failed:', error);
+    console.error('Top level error in analysis:', error);
     return NextResponse.json({ 
       error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
+      message: 'Analysis failed',
+      details: error instanceof Error ? error.message : 'Unknown error occurred'
     }, { status: 500 });
   }
 } 
