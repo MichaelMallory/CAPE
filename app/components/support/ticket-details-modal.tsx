@@ -528,12 +528,13 @@ export function TicketDetailsModal({ ticket, open, onOpenChange }: TicketDetails
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to analyze ticket');
-      }
+      const data = await response.json();
       
-      const analysis = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.message || data.details || 'Failed to analyze ticket');
+      }
+
+      const analysis = data;
 
       // Update priority
       addMessage(`⚠️ Analyzing threat level... determined as ${analysis.priority_assessment.level}`);
