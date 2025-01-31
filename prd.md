@@ -21,7 +21,7 @@ CAPE is a next-generation CRM system designed specifically for superhero organiz
    - Team leaders
    - Security clearance managers
 
-### Core Features
+### Core Featuress
 
 #### 1. Ticket Management System
 - **Mission Support Tickets**
