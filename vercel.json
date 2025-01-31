@@ -1,7 +1,22 @@
 {
   "functions": {
-    "app/api/**/*": {
-      "maxDuration": 60
+    "app/api/tickets/analyze/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "app/api/tickets/*/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "app/api/**": {
+      "maxDuration": 30,
+      "memory": 1024
     }
-  }
+  },
+  "routes": [
+    {
+      "source": "/api/tickets/analyze",
+      "destination": "/api/tickets/analyze"
+    }
+  ]
 } 

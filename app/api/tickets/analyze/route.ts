@@ -8,6 +8,9 @@ import { cookies } from 'next/headers';
 import { LangChainTracer } from 'langchain/callbacks';
 import { findSimilarHeroes } from '@/utils/pinecone-client';
 
+export const runtime = 'nodejs';  // Explicitly set to use serverless runtime
+export const maxDuration = 60;    // Set max duration to 60 seconds
+
 // Initialize tracer
 const tracer = new LangChainTracer({
   projectName: process.env.LANGCHAIN_PROJECT || "cape-hero-assignment"
@@ -329,7 +332,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ 
             error: true,
             message: 'Failed to parse objectives response',
-            details: `Invalid objectives format: ${parseError.message}`
+            details: `Invalid objectives format: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`
           }, { status: 500 });
         }
       } catch (parseError) {
@@ -338,7 +341,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ 
           error: true,
           message: 'Failed to parse priority response',
-          details: `Invalid priority format: ${parseError.message}`
+          details: `Invalid priority format: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`
         }, { status: 500 });
       }
     } catch (error) {
