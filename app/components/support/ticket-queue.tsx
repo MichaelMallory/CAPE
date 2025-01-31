@@ -358,36 +358,36 @@ export function TicketQueue() {
         />
       )}
 
-      <ScrollArea className="min-h-[360px] max-h-[660px] border rounded-md">
+      <ScrollArea className="h-[calc(100vh-280px)] border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary sticky top-0 bg-background"
                 onClick={() => handleSort('title')}
               >
                 Title {sortField === 'title' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary sticky top-0 bg-background"
                 onClick={() => handleSort('status')}
               >
                 Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary sticky top-0 bg-background"
                 onClick={() => handleSort('priority')}
               >
                 Priority {sortField === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead>Assigned To</TableHead>
+              <TableHead className="sticky top-0 bg-background">Assigned To</TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-primary"
+                className="cursor-pointer hover:text-primary sticky top-0 bg-background"
                 onClick={() => handleSort('created_at')}
               >
                 Created {sortField === 'created_at' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="sticky top-0 bg-background">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

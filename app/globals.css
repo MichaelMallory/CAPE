@@ -97,6 +97,12 @@
   @apply bg-white dark:bg-gray-800 shadow-xl border-2 !important;
 }
 
+/* AI Analysis Dialog styles */
+.ai-analysis-dialog {
+  @apply bg-white dark:bg-gray-800 shadow-xl border-2 !important;
+  @apply backdrop-blur-none !important;
+}
+
 /* Ensure proper z-indexing for select dropdowns */
 [data-radix-popper-content-wrapper] {
   @apply z-50 !important;
